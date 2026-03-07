@@ -3,10 +3,10 @@ import Array "mo:core/Array";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Iter "mo:core/Iter";
-import Runtime "mo:core/Runtime";
-import Order "mo:core/Order";
-import Nat "mo:core/Nat";
 import Int "mo:core/Int";
+import Nat "mo:core/Nat";
+import Order "mo:core/Order";
+import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
@@ -16,17 +16,17 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // User Profiles
+  // ========== User Profiles ==========
   public type UserProfile = {
     name : Text;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
 
-  // Site Content
+  // ========== Site Content ==========
   let siteContent = Map.empty<Text, Text>();
 
-  // Membership Tier
+  // ========== Membership Tiers ==========
   type MembershipTier = {
     id : Nat;
     name : Text;
@@ -44,7 +44,7 @@ actor {
   let membershipTiers = Map.empty<Nat, MembershipTier>();
   var nextTierId = 1;
 
-  // Staff Member
+  // ========== Staff Members ==========
   type StaffMember = {
     id : Nat;
     name : Text;
@@ -62,7 +62,7 @@ actor {
   let staffMembers = Map.empty<Nat, StaffMember>();
   var nextStaffId = 1;
 
-  // Announcements
+  // ========== Announcements ==========
   type Announcement = {
     id : Nat;
     title : Text;
@@ -82,8 +82,7 @@ actor {
 
   var isInitialized = false;
 
-  // ********* User Profile Management *********
-
+  // ========== User Profile Management ==========
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can access profiles");
@@ -105,8 +104,7 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // ********* Initialization & Helpers *********
-
+  // ========== Initialization & Helpers ==========
   public shared ({ caller }) func initDefaultContent() : async () {
     if (isInitialized) { return Runtime.trap("Already initialized") };
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
@@ -220,7 +218,7 @@ actor {
     isInitialized := true;
   };
 
-  // ********* Site Content *********
+  // ========== Site Content ==========
   // Public read access - no authorization needed
   public query ({ caller }) func getContentByKey(key : Text) : async Text {
     switch (siteContent.get(key)) {
@@ -242,8 +240,7 @@ actor {
     siteContent.toArray();
   };
 
-  // ********* Membership Tiers *********
-
+  // ========== Membership Tiers ==========
   // Public read access - no authorization needed
   public query ({ caller }) func getMembershipTier(id : Nat) : async MembershipTier {
     switch (membershipTiers.get(id)) {
@@ -306,8 +303,7 @@ actor {
     membershipTiers.remove(id);
   };
 
-  // ********* Staff Members *********
-
+  // ========== Staff Members ==========
   // Public read access - no authorization needed
   public query ({ caller }) func getStaffMember(id : Nat) : async StaffMember {
     switch (staffMembers.get(id)) {
@@ -364,8 +360,7 @@ actor {
     staffMembers.remove(id);
   };
 
-  // ********* Announcements *********
-
+  // ========== Announcements ==========
   // Public read access - no authorization needed
   public query ({ caller }) func getAnnouncement(id : Nat) : async Announcement {
     switch (announcements.get(id)) {

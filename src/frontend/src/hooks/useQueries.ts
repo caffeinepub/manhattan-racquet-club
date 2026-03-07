@@ -302,9 +302,32 @@ export function useIsCallerAdmin() {
     queryKey: ["isAdmin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
     staleTime: 60_000,
+  });
+}
+
+// ─── Admin Management ─────────────────────────────────────────────────────────
+
+export function useAssignUserRole() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      user: import("@icp-sdk/core/principal").Principal;
+      role: import("../backend.d.ts").UserRole;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.assignCallerUserRole(data.user, data.role);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admins"] });
+    },
   });
 }

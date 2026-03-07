@@ -37,6 +37,7 @@ import type {
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useIsCallerAdmin } from "../hooks/useQueries";
 
+import AdminAdminsTab from "./admin/AdminAdminsTab";
 import AdminAnnouncementsTab from "./admin/AdminAnnouncementsTab";
 import AdminContentTab from "./admin/AdminContentTab";
 import AdminStaffTab from "./admin/AdminStaffTab";
@@ -220,6 +221,13 @@ function Dashboard() {
               >
                 Announcements
               </TabsTrigger>
+              <TabsTrigger
+                value="admins"
+                className="font-sans text-sm"
+                data-ocid="admin.admins.tab"
+              >
+                Admins
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="content">
@@ -233,6 +241,9 @@ function Dashboard() {
             </TabsContent>
             <TabsContent value="announcements">
               <AdminAnnouncementsTab />
+            </TabsContent>
+            <TabsContent value="admins">
+              <AdminAdminsTab />
             </TabsContent>
           </Tabs>
         </motion.div>

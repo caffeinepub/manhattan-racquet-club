@@ -38,6 +38,7 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'claimFirstAdmin' : ActorMethod<[], boolean>,
   'createAnnouncement' : ActorMethod<[string, string], bigint>,
   'createMembershipTier' : ActorMethod<
     [string, string, Array<string>, bigint],
@@ -59,6 +60,7 @@ export interface _SERVICE {
   'getPublishedAnnouncements' : ActorMethod<[], Array<Announcement>>,
   'getStaffMember' : ActorMethod<[bigint], StaffMember>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'hasAnyAdmin' : ActorMethod<[], boolean>,
   'initDefaultContent' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,

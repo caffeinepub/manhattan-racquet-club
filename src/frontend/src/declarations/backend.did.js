@@ -39,6 +39,7 @@ export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'claimFirstAdmin' : IDL.Func([], [IDL.Bool], []),
   'createAnnouncement' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
   'createMembershipTier' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Nat],
@@ -77,6 +78,7 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'hasAnyAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'initDefaultContent' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -129,6 +131,7 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'claimFirstAdmin' : IDL.Func([], [IDL.Bool], []),
     'createAnnouncement' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
     'createMembershipTier' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Nat],
@@ -171,6 +174,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'hasAnyAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'initDefaultContent' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),

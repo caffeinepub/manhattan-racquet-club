@@ -11,10 +11,15 @@ import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
+
+
 actor {
   // Authorization system state
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+
+  // Track if any admin has been assigned
+  var hasAdminAssigned = false;
 
   // ========== User Profiles ==========
   public type UserProfile = {
@@ -82,33 +87,72 @@ actor {
 
   var isInitialized = false;
 
+  // ========== First Admin Claim ==========
+  public shared ({ caller }) func claimFirstAdmin() : async Bool {
+    // Anonymous callers cannot claim admin
+    if (caller.isAnonymous()) {
+      return false;
+    };
+
+    // If admin already assigned, return false
+    if (hasAdminAssigned) {
+      return false;
+    };
+
+    // Assign caller as admin directly without using assignRole
+    accessControlState.userRoles.add(caller, #admin);
+    hasAdminAssigned := true;
+    true;
+  };
+
+  public query func hasAnyAdmin() : async Bool {
+    hasAdminAssigned;
+  };
+
   // ========== User Profile Management ==========
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?role) {
+        switch (role) {
+          case (#user or #admin) { userProfiles.get(caller) };
+          case (#guest) { Runtime.trap("Unauthorized: Only users can access profiles") };
+        };
+      };
+      case (null) { Runtime.trap("Unauthorized: Only users can access profiles") };
     };
-    userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+    if (caller == user) {
+      return userProfiles.get(user);
     };
-    userProfiles.get(user);
+    // Only allow admins to fetch other users' profiles
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) { userProfiles.get(user) };
+      case (?_) { Runtime.trap("Unauthorized: Only admins can fetch other users' profiles") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can fetch other users' profiles") };
+    };
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?role) {
+        switch (role) {
+          case (#user or #admin) { userProfiles.add(caller, profile) };
+          case (#guest) { Runtime.trap("Unauthorized: Only users can save profiles") };
+        };
+      };
+      case (null) { Runtime.trap("Unauthorized: Only users can save profiles") };
     };
-    userProfiles.add(caller, profile);
   };
 
   // ========== Initialization & Helpers ==========
   public shared ({ caller }) func initDefaultContent() : async () {
     if (isInitialized) { return Runtime.trap("Already initialized") };
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
 
     // Site Content
@@ -219,45 +263,42 @@ actor {
   };
 
   // ========== Site Content ==========
-  // Public read access - no authorization needed
-  public query ({ caller }) func getContentByKey(key : Text) : async Text {
+  public query func getContentByKey(key : Text) : async Text {
     switch (siteContent.get(key)) {
       case (null) { Runtime.trap("Content not found") };
       case (?content) { content };
     };
   };
 
-  // Admin-only write access
   public shared ({ caller }) func setContentByKey(key : Text, content : Text) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) { siteContent.add(key, content) };
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
-    siteContent.add(key, content);
   };
 
-  // Public read access - no authorization needed
   public query ({ caller }) func getAllContent() : async [(Text, Text)] {
     siteContent.toArray();
   };
 
   // ========== Membership Tiers ==========
-  // Public read access - no authorization needed
-  public query ({ caller }) func getMembershipTier(id : Nat) : async MembershipTier {
+  public query func getMembershipTier(id : Nat) : async MembershipTier {
     switch (membershipTiers.get(id)) {
       case (null) { Runtime.trap("Tier not found") };
       case (?tier) { tier };
     };
   };
 
-  // Public read access - no authorization needed
-  public query ({ caller }) func getAllMembershipTiers() : async [MembershipTier] {
+  public query func getAllMembershipTiers() : async [MembershipTier] {
     membershipTiers.values().toArray().sort();
   };
 
-  // Admin-only
   public shared ({ caller }) func createMembershipTier(name : Text, price : Text, benefits : [Text], displayOrder : Nat) : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
 
     let tier : MembershipTier = {
@@ -272,10 +313,11 @@ actor {
     tier.id;
   };
 
-  // Admin-only
   public shared ({ caller }) func updateMembershipTier(id : Nat, name : Text, price : Text, benefits : [Text], displayOrder : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     switch (membershipTiers.get(id)) {
       case (null) { Runtime.trap("Tier not found") };
@@ -292,10 +334,11 @@ actor {
     };
   };
 
-  // Admin-only
   public shared ({ caller }) func deleteMembershipTier(id : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     if (not membershipTiers.containsKey(id)) {
       Runtime.trap("Tier not found");
@@ -304,23 +347,22 @@ actor {
   };
 
   // ========== Staff Members ==========
-  // Public read access - no authorization needed
-  public query ({ caller }) func getStaffMember(id : Nat) : async StaffMember {
+  public query func getStaffMember(id : Nat) : async StaffMember {
     switch (staffMembers.get(id)) {
       case (null) { Runtime.trap("Staff member not found") };
       case (?member) { member };
     };
   };
 
-  // Public read access - no authorization needed
-  public query ({ caller }) func getAllStaffMembers() : async [StaffMember] {
+  public query func getAllStaffMembers() : async [StaffMember] {
     staffMembers.values().toArray().sort();
   };
 
-  // Admin-only
   public shared ({ caller }) func createStaffMember(name : Text, role : Text, bio : Text, displayOrder : Nat) : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
 
     let staff : StaffMember = {
@@ -335,10 +377,11 @@ actor {
     staff.id;
   };
 
-  // Admin-only
   public shared ({ caller }) func updateStaffMember(id : Nat, name : Text, role : Text, bio : Text, displayOrder : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     switch (staffMembers.get(id)) {
       case (null) { Runtime.trap("Staff member not found") };
@@ -349,10 +392,11 @@ actor {
     };
   };
 
-  // Admin-only
   public shared ({ caller }) func deleteStaffMember(id : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     if (not staffMembers.containsKey(id)) {
       Runtime.trap("Staff member not found");
@@ -361,31 +405,31 @@ actor {
   };
 
   // ========== Announcements ==========
-  // Public read access - no authorization needed
-  public query ({ caller }) func getAnnouncement(id : Nat) : async Announcement {
+  public query func getAnnouncement(id : Nat) : async Announcement {
     switch (announcements.get(id)) {
       case (null) { Runtime.trap("Announcement not found") };
       case (?announcement) { announcement };
     };
   };
 
-  // Admin-only: returns all announcements including unpublished
   public query ({ caller }) func getAllAnnouncements() : async [Announcement] {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can view all announcements");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can view all announcements") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can view all announcements") };
     };
     announcements.values().toArray().sort();
   };
 
-  // Public read access - returns only published announcements
   public query ({ caller }) func getPublishedAnnouncements() : async [Announcement] {
     announcements.values().filter(func(a) { a.published }).toArray().sort();
   };
 
-  // Admin-only
   public shared ({ caller }) func createAnnouncement(title : Text, body : Text) : async Nat {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
 
     let announcement : Announcement = {
@@ -400,10 +444,11 @@ actor {
     announcement.id;
   };
 
-  // Admin-only
   public shared ({ caller }) func updateAnnouncement(id : Nat, title : Text, body : Text) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     switch (announcements.get(id)) {
       case (null) { Runtime.trap("Announcement not found") };
@@ -420,10 +465,11 @@ actor {
     };
   };
 
-  // Admin-only
   public shared ({ caller }) func setAnnouncementPublished(id : Nat, published : Bool) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     switch (announcements.get(id)) {
       case (null) { Runtime.trap("Announcement not found") };
@@ -440,10 +486,11 @@ actor {
     };
   };
 
-  // Admin-only
   public shared ({ caller }) func deleteAnnouncement(id : Nat) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can perform this action");
+    switch (accessControlState.userRoles.get(caller)) {
+      case (?#admin) {};
+      case (?_) { Runtime.trap("Unauthorized: Only admins can perform this action") };
+      case (null) { Runtime.trap("Unauthorized: Only admins can perform this action") };
     };
     if (not announcements.containsKey(id)) {
       Runtime.trap("Announcement not found");

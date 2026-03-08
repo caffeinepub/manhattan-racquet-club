@@ -121,6 +121,7 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    claimFirstAdmin(): Promise<boolean>;
     createAnnouncement(title: string, body: string): Promise<bigint>;
     createMembershipTier(name: string, price: string, benefits: Array<string>, displayOrder: bigint): Promise<bigint>;
     createStaffMember(name: string, role: string, bio: string, displayOrder: bigint): Promise<bigint>;
@@ -139,6 +140,7 @@ export interface backendInterface {
     getPublishedAnnouncements(): Promise<Array<Announcement>>;
     getStaffMember(id: bigint): Promise<StaffMember>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    hasAnyAdmin(): Promise<boolean>;
     initDefaultContent(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
@@ -176,6 +178,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async claimFirstAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.claimFirstAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.claimFirstAdmin();
             return result;
         }
     }
@@ -429,6 +445,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getUserProfile(arg0);
             return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async hasAnyAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.hasAnyAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.hasAnyAdmin();
+            return result;
         }
     }
     async initDefaultContent(): Promise<void> {

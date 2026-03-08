@@ -38,6 +38,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    claimFirstAdmin(): Promise<boolean>;
     createAnnouncement(title: string, body: string): Promise<bigint>;
     createMembershipTier(name: string, price: string, benefits: Array<string>, displayOrder: bigint): Promise<bigint>;
     createStaffMember(name: string, role: string, bio: string, displayOrder: bigint): Promise<bigint>;
@@ -56,6 +57,7 @@ export interface backendInterface {
     getPublishedAnnouncements(): Promise<Array<Announcement>>;
     getStaffMember(id: bigint): Promise<StaffMember>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    hasAnyAdmin(): Promise<boolean>;
     initDefaultContent(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;

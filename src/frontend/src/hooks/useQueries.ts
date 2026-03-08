@@ -3,6 +3,7 @@ import type {
   Announcement,
   MembershipTier,
   StaffMember,
+  UserProfile,
 } from "../backend.d.ts";
 import { useActor } from "./useActor";
 
@@ -310,6 +311,67 @@ export function useIsCallerAdmin() {
     },
     enabled: !!actor && !isFetching,
     staleTime: 60_000,
+  });
+}
+
+export function useHasAnyAdmin() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["hasAnyAdmin"],
+    queryFn: async () => {
+      if (!actor) return false;
+      try {
+        return await actor.hasAnyAdmin();
+      } catch {
+        return false;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+export function useClaimFirstAdmin() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.claimFirstAdmin();
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["isAdmin"] });
+      void qc.invalidateQueries({ queryKey: ["hasAnyAdmin"] });
+    },
+  });
+}
+
+// ─── User Profile ─────────────────────────────────────────────────────────────
+
+export function useCallerUserProfile() {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserProfile | null>({
+    queryKey: ["userProfile", "caller"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getCallerUserProfile();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+export function useSaveCallerUserProfile() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (profile: UserProfile) => {
+      if (!actor) throw new Error("No actor");
+      return actor.saveCallerUserProfile(profile);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["userProfile", "caller"] });
+    },
   });
 }
 

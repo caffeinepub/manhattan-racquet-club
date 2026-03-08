@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Check,
+  Copy,
   Loader2,
   LogOut,
   Pencil,
@@ -27,15 +28,15 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type {
   Announcement,
   MembershipTier,
   StaffMember,
 } from "../backend.d.ts";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useIsCallerAdmin } from "../hooks/useQueries";
 
 import AdminAdminsTab from "./admin/AdminAdminsTab";
 import AdminAnnouncementsTab from "./admin/AdminAnnouncementsTab";
@@ -58,7 +59,7 @@ export {
   AlertDialogTitle,
   AlertDialogTrigger,
 };
-export { Loader2, PlusCircle, Pencil, Trash2, Check, X };
+export { Copy, Loader2, PlusCircle, Pencil, Trash2, Check, X };
 
 // ─── Login Screen ─────────────────────────────────────────────────────────
 function LoginScreen() {
@@ -109,25 +110,56 @@ function LoginScreen() {
 
 // ─── Access Denied ────────────────────────────────────────────────────────
 function AccessDenied() {
-  const { clear } = useInternetIdentity();
+  const { clear, identity } = useInternetIdentity();
+  const myPrincipal = identity?.getPrincipal().toString() ?? "";
+
+  function copyPrincipal() {
+    if (!myPrincipal) return;
+    void navigator.clipboard.writeText(myPrincipal).then(() => {
+      toast("Principal ID copied to clipboard.");
+    });
+  }
+
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center px-6">
       <div className="absolute inset-0 court-texture opacity-20" />
       <div
-        className="relative z-10 bg-card rounded-lg border border-border shadow-club p-10 max-w-sm w-full text-center"
+        className="relative z-10 bg-card rounded-lg border border-border shadow-club p-10 max-w-md w-full text-center"
         data-ocid="admin.error_state"
       >
         <div className="font-display text-xl font-bold text-foreground mb-2">
           Access Denied
         </div>
-        <p className="font-sans text-sm text-muted-foreground mb-7">
-          Your account does not have admin privileges. Contact the club
-          administrator for access.
+        <p className="font-sans text-sm text-muted-foreground mb-5">
+          Your account does not have admin access. Share your Principal ID below
+          with an existing admin so they can add you from the Admins tab.
         </p>
+        {myPrincipal && (
+          <div className="mb-6 text-left">
+            <p className="font-sans text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+              Your Principal ID
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 font-mono text-xs bg-muted rounded px-3 py-2 text-foreground break-all">
+                {myPrincipal}
+              </code>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={copyPrincipal}
+                className="shrink-0 font-sans text-xs"
+                data-ocid="admin.access_denied.button"
+              >
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                Copy
+              </Button>
+            </div>
+          </div>
+        )}
         <Button
           variant="outline"
           onClick={clear}
-          className="font-sans"
+          className="font-sans w-full"
           data-ocid="admin.logout.secondary_button"
         >
           <LogOut className="mr-2 h-4 w-4" />
@@ -252,12 +284,84 @@ function Dashboard() {
   );
 }
 
+// ─── Auth state type ──────────────────────────────────────────────────────
+type AdminAuthState = "loading" | "login" | "dashboard" | "denied";
+
 // ─── Main Admin Page ──────────────────────────────────────────────────────
 export default function AdminPage() {
   const { identity, isInitializing } = useInternetIdentity();
-  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
+  const { actor, isFetching: actorFetching } = useActor();
+  const [authState, setAuthState] = useState<AdminAuthState>("loading");
+  // Track which identity we've already processed to avoid re-running the flow
+  const processedPrincipal = useRef<string | null>(null);
 
-  if (isInitializing || adminLoading) {
+  useEffect(() => {
+    // Wait until identity and actor are both ready
+    if (isInitializing || actorFetching) return;
+
+    // No identity → show login
+    if (!identity) {
+      processedPrincipal.current = null;
+      setAuthState("login");
+      return;
+    }
+
+    if (!actor) return;
+
+    const principal = identity.getPrincipal().toString();
+
+    // Don't re-run the flow for the same principal
+    if (processedPrincipal.current === principal) return;
+
+    let cancelled = false;
+
+    async function runAuthFlow() {
+      setAuthState("loading");
+      try {
+        const hasAdmin = await actor!.hasAnyAdmin();
+
+        if (cancelled) return;
+
+        if (!hasAdmin) {
+          // No admin yet — try to claim the first-admin slot
+          const claimed = await actor!.claimFirstAdmin();
+          if (cancelled) return;
+          if (claimed) {
+            processedPrincipal.current = principal;
+            setAuthState("dashboard");
+          } else {
+            // Race condition: someone else claimed it first
+            processedPrincipal.current = principal;
+            setAuthState("denied");
+          }
+        } else {
+          // Admin already exists — check if this caller is an admin
+          let isAdmin = false;
+          try {
+            isAdmin = await actor!.isCallerAdmin();
+          } catch {
+            isAdmin = false;
+          }
+          if (cancelled) return;
+          processedPrincipal.current = principal;
+          setAuthState(isAdmin ? "dashboard" : "denied");
+        }
+      } catch {
+        if (!cancelled) {
+          processedPrincipal.current = principal;
+          setAuthState("denied");
+        }
+      }
+    }
+
+    void runAuthFlow();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [identity, actor, isInitializing, actorFetching]);
+
+  if (authState === "loading") {
     return (
       <div className="min-h-screen bg-primary flex items-center justify-center">
         <div className="absolute inset-0 court-texture opacity-20" />
@@ -274,11 +378,11 @@ export default function AdminPage() {
     );
   }
 
-  if (!identity) {
+  if (authState === "login") {
     return <LoginScreen />;
   }
 
-  if (!isAdmin) {
+  if (authState === "denied") {
     return <AccessDenied />;
   }
 

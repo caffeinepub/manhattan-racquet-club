@@ -393,3 +393,71 @@ export function useAssignUserRole() {
     },
   });
 }
+
+export function useIsCallerSuperAdmin() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["isSuperAdmin"],
+    queryFn: async () => {
+      if (!actor) return false;
+      try {
+        return await actor.isCallerSuperAdmin();
+      } catch {
+        return false;
+      }
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+export function useGetAllAdmins() {
+  const { actor, isFetching } = useActor();
+  return useQuery<import("../backend.d.ts").AdminEntry[]>({
+    queryKey: ["admins"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllAdmins();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function useSetSuperAdmin() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      user: import("@icp-sdk/core/principal").Principal;
+      promote: boolean;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.setSuperAdmin(data.user, data.promote);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admins"] });
+      void qc.invalidateQueries({ queryKey: ["isSuperAdmin"] });
+    },
+  });
+}
+
+export function useAssignUserRoleWithSuperAdminCheck() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      user: import("@icp-sdk/core/principal").Principal;
+      role: import("../backend.d.ts").UserRole;
+    }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.assignCallerUserRoleWithSuperAdminCheck(
+        data.user,
+        data.role,
+      );
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admins"] });
+    },
+  });
+}

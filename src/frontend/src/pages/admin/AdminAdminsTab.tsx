@@ -15,28 +15,41 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Principal } from "@icp-sdk/core/principal";
 import {
   BookOpen,
   Copy,
-  Info,
   Loader2,
   Save,
   ShieldCheck,
   ShieldMinus,
+  ShieldPlus,
+  Trash2,
   UserPlus,
+  Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserRole } from "../../backend";
+import type { AdminEntry } from "../../backend.d.ts";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import {
-  useAssignUserRole,
+  useAssignUserRoleWithSuperAdminCheck,
   useCallerUserProfile,
+  useGetAllAdmins,
   useSaveCallerUserProfile,
+  useSetSuperAdmin,
 } from "../../hooks/useQueries";
 
 // ─── localStorage helpers ──────────────────────────────────────────────────
@@ -67,25 +80,321 @@ function parsePrincipal(text: string): Principal | null {
   }
 }
 
-// ─── Name Badge ───────────────────────────────────────────────────────────
+function truncatePrincipal(p: string) {
+  if (p.length <= 20) return p;
+  return `${p.slice(0, 10)}…${p.slice(-6)}`;
+}
 
-function NameBadge({ name }: { name: string }) {
+// ─── Role Badge ───────────────────────────────────────────────────────────
+
+function RoleBadge({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  if (isSuperAdmin) {
+    return (
+      <Badge
+        variant="outline"
+        className="font-sans text-xs font-semibold px-2 py-0.5 bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700 shrink-0"
+      >
+        Superadmin
+      </Badge>
+    );
+  }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-sans text-xs font-medium">
-      {name}
-    </span>
+    <Badge
+      variant="secondary"
+      className="font-sans text-xs font-semibold px-2 py-0.5 shrink-0"
+    >
+      Admin
+    </Badge>
+  );
+}
+
+// ─── Admin Row ────────────────────────────────────────────────────────────
+
+interface AdminRowProps {
+  entry: AdminEntry;
+  index: number;
+  isMe: boolean;
+  isSuperAdmin: boolean; // viewer is superadmin
+  adminNames: Record<string, string>;
+  onPromote: (principal: string) => void;
+  onDemote: (principal: string) => void;
+  onRemove: (principal: string) => void;
+  isPending: boolean;
+}
+
+function AdminRow({
+  entry,
+  index,
+  isMe,
+  isSuperAdmin,
+  adminNames,
+  onPromote,
+  onDemote,
+  onRemove,
+  isPending,
+}: AdminRowProps) {
+  const pid = entry.principal.toString();
+  const label = adminNames[pid] ?? "";
+
+  function copyPid() {
+    void navigator.clipboard.writeText(pid).then(() => {
+      toast.success("Principal ID copied to clipboard.");
+    });
+  }
+
+  return (
+    <div
+      className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
+      data-ocid={`admins.list.item.${index}`}
+    >
+      {/* Left: role + identity */}
+      <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+        <RoleBadge isSuperAdmin={entry.isSuperAdmin} />
+
+        <div className="flex flex-col min-w-0 gap-0.5">
+          {label && (
+            <span className="font-sans text-sm font-semibold text-foreground truncate">
+              {label}
+            </span>
+          )}
+          <div className="flex items-center gap-1.5">
+            <code className="font-mono text-xs text-muted-foreground truncate">
+              {truncatePrincipal(pid)}
+            </code>
+            <button
+              type="button"
+              onClick={copyPid}
+              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Copy principal ID"
+              data-ocid={`admins.list.button.${index}`}
+            >
+              <Copy className="h-3 w-3" />
+            </button>
+          </div>
+          {isMe && (
+            <span className="font-sans text-xs text-primary font-medium">
+              You
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Right: actions (superadmin viewer only, not for self) */}
+      {isSuperAdmin && (
+        <div className="flex items-center gap-2 shrink-0">
+          {!isMe ? (
+            <>
+              {/* Promote / Demote */}
+              {!entry.isSuperAdmin ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPending}
+                      className="font-sans text-xs gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50 hover:border-amber-400 dark:text-amber-300 dark:border-amber-700 dark:hover:bg-amber-900/30"
+                      data-ocid={`admins.promote.button.${index}`}
+                    >
+                      <ShieldPlus className="h-3.5 w-3.5" />
+                      Promote
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent
+                    data-ocid={`admins.promote.dialog.${index}`}
+                  >
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">
+                        Promote to Superadmin?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-sans">
+                        {label ? (
+                          <>
+                            <strong>{label}</strong> will gain full Superadmin
+                            access, including the ability to add, remove, and
+                            promote other admins.
+                          </>
+                        ) : (
+                          <>
+                            This admin will gain full Superadmin access,
+                            including the ability to add, remove, and promote
+                            other admins.
+                          </>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        className="font-sans"
+                        data-ocid={`admins.promote.cancel_button.${index}`}
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => onPromote(pid)}
+                        className="bg-amber-600 text-white hover:bg-amber-700 font-sans"
+                        data-ocid={`admins.promote.confirm_button.${index}`}
+                      >
+                        Promote to Superadmin
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPending}
+                      className="font-sans text-xs gap-1.5 text-muted-foreground"
+                      data-ocid={`admins.demote.button.${index}`}
+                    >
+                      <ShieldMinus className="h-3.5 w-3.5" />
+                      Demote
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent
+                    data-ocid={`admins.demote.dialog.${index}`}
+                  >
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">
+                        Demote to Admin?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-sans">
+                        {label ? (
+                          <>
+                            <strong>{label}</strong> will be demoted to a
+                            regular Admin. They will lose the ability to manage
+                            other admins.
+                          </>
+                        ) : (
+                          <>
+                            This Superadmin will be demoted to a regular Admin
+                            and will lose the ability to manage other admins.
+                          </>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        className="font-sans"
+                        data-ocid={`admins.demote.cancel_button.${index}`}
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => onDemote(pid)}
+                        className="font-sans"
+                        data-ocid={`admins.demote.confirm_button.${index}`}
+                      >
+                        Demote to Admin
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              {/* Remove */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={isPending}
+                    className="font-sans text-xs gap-1.5 text-destructive hover:bg-destructive/10"
+                    data-ocid={`admins.remove.delete_button.${index}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent data-ocid={`admins.remove.dialog.${index}`}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-display">
+                      Remove Admin Access
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="font-sans">
+                      {label ? (
+                        <>
+                          Are you sure you want to remove{" "}
+                          <strong>{label}</strong> as an admin? They will lose
+                          all access to this dashboard.
+                        </>
+                      ) : (
+                        <>
+                          Are you sure you want to remove this admin? They will
+                          lose all access to this dashboard.
+                        </>
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel
+                      className="font-sans"
+                      data-ocid={`admins.remove.cancel_button.${index}`}
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onRemove(pid)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-sans"
+                      data-ocid={`admins.remove.confirm_button.${index}`}
+                    >
+                      Remove Admin
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled
+                      className="font-sans text-xs gap-1.5 text-muted-foreground cursor-not-allowed opacity-50"
+                      data-ocid={`admins.self.button.${index}`}
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      You
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  className="font-sans text-xs"
+                  data-ocid={`admins.self.tooltip.${index}`}
+                >
+                  You cannot modify your own admin account.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
 
-export default function AdminAdminsTab() {
+interface AdminAdminsTabProps {
+  isSuperAdmin: boolean;
+}
+
+export default function AdminAdminsTab({ isSuperAdmin }: AdminAdminsTabProps) {
   const { identity } = useInternetIdentity();
   const myPrincipal = identity?.getPrincipal().toString() ?? "";
 
-  const assignRole = useAssignUserRole();
+  const adminsQuery = useGetAllAdmins();
+  const assignRoleWithCheck = useAssignUserRoleWithSuperAdminCheck();
+  const setSuperAdmin = useSetSuperAdmin();
   const profileQuery = useCallerUserProfile();
   const saveProfile = useSaveCallerUserProfile();
+
+  const isPending = assignRoleWithCheck.isPending || setSuperAdmin.isPending;
 
   // Admin names stored in localStorage
   const [adminNames, setAdminNames] =
@@ -109,30 +418,16 @@ export default function AdminAdminsTab() {
     }
   }, [myPrincipal, adminNames, myNameDirty]);
 
-  // Add admin
+  // Add admin form
   const [addInput, setAddInput] = useState("");
   const [addName, setAddName] = useState("");
   const [addError, setAddError] = useState("");
 
-  // Remove admin
-  const [removeInput, setRemoveInput] = useState("");
-  const [removeError, setRemoveError] = useState("");
-
-  const isSelfRemoval =
-    removeInput.trim() !== "" && removeInput.trim() === myPrincipal;
-
-  // Name label for the remove input field (looked up from localStorage)
-  const removeName = removeInput.trim()
-    ? (adminNames[removeInput.trim()] ?? "")
-    : "";
-
   async function handleSaveMyName() {
     const trimmed = myName.trim();
-    // Save to localStorage
     const updated = { ...adminNames, [myPrincipal]: trimmed };
     setAdminNames(updated);
     saveAdminNames(updated);
-    // Save to backend
     try {
       await saveProfile.mutateAsync({ name: trimmed });
       toast.success("Your name has been saved.");
@@ -150,8 +445,10 @@ export default function AdminAdminsTab() {
       return;
     }
     try {
-      await assignRole.mutateAsync({ user: principal, role: UserRole.admin });
-      // Save name to localStorage if provided
+      await assignRoleWithCheck.mutateAsync({
+        user: principal,
+        role: UserRole.admin,
+      });
       if (addName.trim()) {
         const updated = { ...adminNames, [addInput.trim()]: addName.trim() };
         setAdminNames(updated);
@@ -160,24 +457,67 @@ export default function AdminAdminsTab() {
       toast.success("Admin added successfully.");
       setAddInput("");
       setAddName("");
-    } catch {
-      toast.error("Failed to add admin. Please try again.");
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : "Unknown error";
+      // Surface backend trap messages which contain useful info
+      const backendMsg = msg.includes(":")
+        ? msg.substring(msg.lastIndexOf(":") + 1).trim()
+        : msg;
+      setAddError(backendMsg || "Failed to add admin. Please try again.");
+      toast.error(`Failed to add admin: ${backendMsg || "Please try again."}`);
     }
   }
 
-  async function handleRemoveAdmin() {
-    setRemoveError("");
-    const principal = parsePrincipal(removeInput);
-    if (!principal) {
-      setRemoveError("Invalid Principal ID format.");
-      return;
-    }
+  async function handlePromote(pid: string) {
+    const principal = parsePrincipal(pid);
+    if (!principal) return;
     try {
-      await assignRole.mutateAsync({ user: principal, role: UserRole.user });
+      await setSuperAdmin.mutateAsync({ user: principal, promote: true });
+      toast.success("Admin promoted to Superadmin.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const backendMsg = msg.includes(":")
+        ? msg.substring(msg.lastIndexOf(":") + 1).trim()
+        : msg;
+      toast.error(`Failed to promote: ${backendMsg || "Please try again."}`);
+    }
+  }
+
+  async function handleDemote(pid: string) {
+    const principal = parsePrincipal(pid);
+    if (!principal) return;
+    try {
+      await setSuperAdmin.mutateAsync({ user: principal, promote: false });
+      toast.success("Superadmin demoted to Admin.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const backendMsg = msg.includes(":")
+        ? msg.substring(msg.lastIndexOf(":") + 1).trim()
+        : msg;
+      toast.error(`Failed to demote: ${backendMsg || "Please try again."}`);
+    }
+  }
+
+  async function handleRemove(pid: string) {
+    const principal = parsePrincipal(pid);
+    if (!principal) return;
+    try {
+      await assignRoleWithCheck.mutateAsync({
+        user: principal,
+        role: UserRole.user,
+      });
       toast.success("Admin removed successfully.");
-      setRemoveInput("");
-    } catch {
-      toast.error("Failed to remove admin. Please try again.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const backendMsg = msg.includes(":")
+        ? msg.substring(msg.lastIndexOf(":") + 1).trim()
+        : msg;
+      toast.error(`Failed to remove: ${backendMsg || "Please try again."}`);
     }
   }
 
@@ -194,21 +534,95 @@ export default function AdminAdminsTab() {
         Admin Management
       </h3>
       <p className="font-sans text-sm text-muted-foreground mb-6">
-        Grant or revoke admin access for other users by their Principal ID.
+        {isSuperAdmin
+          ? "As a Superadmin, you can manage all admins, promote/demote them, and add new ones."
+          : "View the list of admins for this club. Contact a Superadmin to change admin access."}
       </p>
 
-      {/* Info box */}
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex gap-3 mb-6">
-        <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-        <p className="font-sans text-sm text-foreground/80 leading-relaxed">
-          Share your Principal ID with other users so they can grant you access.
-          The <strong>first person to log in</strong> automatically becomes an
-          admin — no setup required.
-        </p>
-      </div>
-
       <div className="space-y-6">
-        {/* Your Name / Profile */}
+        {/* ── Admin List ─────────────────────────────────────────────────── */}
+        <div className="bg-card border border-border rounded-lg p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="h-4 w-4 text-primary" />
+            <h4 className="font-sans text-sm font-semibold text-foreground">
+              All Admins
+            </h4>
+            {adminsQuery.data && (
+              <span className="ml-auto font-sans text-xs text-muted-foreground">
+                {adminsQuery.data.length}{" "}
+                {adminsQuery.data.length === 1 ? "admin" : "admins"}
+              </span>
+            )}
+          </div>
+          <p className="font-sans text-xs text-muted-foreground mb-4">
+            {isSuperAdmin
+              ? "Use the Promote/Demote buttons to change roles, or Remove to revoke access entirely."
+              : "All users who have been granted access to this dashboard."}
+          </p>
+
+          {/* Loading skeleton */}
+          {adminsQuery.isLoading && (
+            <div className="space-y-3" data-ocid="admins.list.loading_state">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-4 rounded-lg border border-border"
+                >
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error state */}
+          {adminsQuery.isError && (
+            <div
+              className="text-center py-6"
+              data-ocid="admins.list.error_state"
+            >
+              <p className="font-sans text-sm text-destructive">
+                Failed to load admins. Please refresh the page.
+              </p>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {adminsQuery.data && adminsQuery.data.length === 0 && (
+            <div
+              className="text-center py-6 text-muted-foreground"
+              data-ocid="admins.list.empty_state"
+            >
+              <p className="font-sans text-sm">No admins found.</p>
+            </div>
+          )}
+
+          {/* Admin rows */}
+          {adminsQuery.data && adminsQuery.data.length > 0 && (
+            <div className="space-y-2" data-ocid="admins.list">
+              {adminsQuery.data.map((entry, idx) => {
+                const pid = entry.principal.toString();
+                const isMe = pid === myPrincipal;
+                return (
+                  <AdminRow
+                    key={pid}
+                    entry={entry}
+                    index={idx + 1}
+                    isMe={isMe}
+                    isSuperAdmin={isSuperAdmin}
+                    adminNames={adminNames}
+                    onPromote={handlePromote}
+                    onDemote={handleDemote}
+                    onRemove={handleRemove}
+                    isPending={isPending}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Your Profile ───────────────────────────────────────────────── */}
         <div className="bg-card border border-border rounded-lg p-5">
           <div className="flex items-center gap-2 mb-3">
             <ShieldCheck className="h-4 w-4 text-primary" />
@@ -286,7 +700,7 @@ export default function AdminAdminsTab() {
           </div>
         </div>
 
-        {/* How to get your Principal ID — Guide */}
+        {/* ── How to get your Principal ID — Guide ───────────────────────── */}
         <div className="bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-lg overflow-hidden">
           <Accordion type="single" collapsible>
             <AccordionItem value="guide" className="border-0">
@@ -333,11 +747,11 @@ export default function AdminAdminsTab() {
                       },
                       {
                         step: 4,
-                        text: "On that screen, your Principal ID is displayed prominently. Copy it and send it to an existing admin.",
+                        text: "On that screen, your Principal ID is displayed prominently. Copy it and send it to an existing Superadmin.",
                       },
                       {
                         step: 5,
-                        text: 'Once the admin adds your Principal ID via the "Add Admin" section, log out and back in — you\'ll have full access.',
+                        text: 'Once the Superadmin adds your Principal ID via the "Add Admin" section below, log out and back in — you\'ll have full access.',
                       },
                     ].map(({ step, text }) => (
                       <li key={step} className="flex gap-3 items-start">
@@ -363,198 +777,88 @@ export default function AdminAdminsTab() {
           </Accordion>
         </div>
 
-        {/* Add Admin */}
-        <div className="bg-card border border-border rounded-lg p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <UserPlus className="h-4 w-4 text-primary" />
-            <h4 className="font-sans text-sm font-semibold text-foreground">
-              Add Admin
-            </h4>
-          </div>
-          <p className="font-sans text-xs text-muted-foreground mb-4">
-            Enter the Principal ID of the user you want to grant admin access.
-            Optionally give them a label so you remember who they are.
-          </p>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="font-sans text-sm font-medium">
-                Principal ID
-              </Label>
-              <Input
-                value={addInput}
-                onChange={(e) => {
-                  setAddInput(e.target.value);
-                  if (addError) setAddError("");
-                }}
-                placeholder="e.g. aaaaa-aa"
-                className="font-mono text-sm"
-                data-ocid="admin.add_admin.input"
-              />
-              {addError && (
-                <p
-                  className="font-sans text-xs text-destructive"
-                  data-ocid="admin.add_admin.error_state"
-                >
-                  {addError}
-                </p>
-              )}
-              {/* Show existing label if we already have one in localStorage */}
-              {addInput.trim() && adminNames[addInput.trim()] && (
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="font-sans text-xs text-muted-foreground">
-                    Known as:
-                  </span>
-                  <NameBadge name={adminNames[addInput.trim()]} />
-                </div>
-              )}
+        {/* ── Add Admin (Superadmin only) ─────────────────────────────────── */}
+        {isSuperAdmin && (
+          <div className="bg-card border border-border rounded-lg p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <UserPlus className="h-4 w-4 text-primary" />
+              <h4 className="font-sans text-sm font-semibold text-foreground">
+                Add Admin
+              </h4>
             </div>
-
-            <div className="space-y-1.5">
-              <Label className="font-sans text-sm font-medium">
-                Name / Label{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                placeholder="e.g. Sarah — my doubles partner"
-                className="font-sans text-sm"
-                data-ocid="admin.add_admin.name.input"
-              />
-              <p className="font-sans text-xs text-muted-foreground">
-                Stored locally in your browser so you remember who this is.
-              </p>
-            </div>
-
-            <Button
-              onClick={handleAddAdmin}
-              disabled={!addInput.trim() || assignRole.isPending}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 font-sans font-semibold"
-              data-ocid="admin.add_admin.primary_button"
-            >
-              {assignRole.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Add as Admin
-            </Button>
-          </div>
-        </div>
-
-        {/* Remove Admin */}
-        <div className="bg-card border border-border rounded-lg p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <ShieldMinus className="h-4 w-4 text-destructive" />
-            <h4 className="font-sans text-sm font-semibold text-foreground">
-              Remove Admin
-            </h4>
-          </div>
-          <p className="font-sans text-xs text-muted-foreground mb-4">
-            Downgrade a user from admin to regular user. They will lose access
-            to this dashboard.
-          </p>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label className="font-sans text-sm font-medium">
-                Principal ID
-              </Label>
-              <Input
-                value={removeInput}
-                onChange={(e) => {
-                  setRemoveInput(e.target.value);
-                  if (removeError) setRemoveError("");
-                }}
-                placeholder="e.g. aaaaa-aa"
-                className="font-mono text-sm"
-                data-ocid="admin.remove_admin.input"
-              />
-              {removeError && (
-                <p
-                  className="font-sans text-xs text-destructive"
-                  data-ocid="admin.remove_admin.error_state"
-                >
-                  {removeError}
-                </p>
-              )}
-              {removeName && (
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="font-sans text-xs text-muted-foreground">
-                    Known as:
-                  </span>
-                  <NameBadge name={removeName} />
-                </div>
-              )}
-              {isSelfRemoval && (
-                <p className="font-sans text-xs text-amber-600 dark:text-amber-400">
-                  ⚠ This is your own Principal ID. Removing yourself will lock
-                  you out of the dashboard.
-                </p>
-              )}
-            </div>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  disabled={!removeInput.trim() || assignRole.isPending}
-                  className="font-sans font-semibold"
-                  data-ocid="admin.remove_admin.delete_button"
-                >
-                  {assignRole.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Remove Admin
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent data-ocid="admin.remove_admin.dialog">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="font-display">
-                    Remove Admin Access
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="font-sans">
-                    {isSelfRemoval ? (
-                      <>
-                        <strong>Warning:</strong> You are about to remove{" "}
-                        <strong>yourself</strong> as an admin. You will
-                        immediately lose access to this dashboard and will need
-                        another admin to restore your access.
-                      </>
-                    ) : (
-                      <>
-                        Are you sure you want to remove{" "}
-                        {removeName ? (
-                          <>
-                            <strong>{removeName}</strong> from admin access?
-                          </>
-                        ) : (
-                          <>
-                            this admin? They will lose access to the dashboard.
-                          </>
-                        )}
-                      </>
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel
-                    className="font-sans"
-                    data-ocid="admin.remove_admin.cancel_button"
+            <p className="font-sans text-xs text-muted-foreground mb-4">
+              Enter the Principal ID of the user you want to grant admin access.
+              Optionally give them a label so you remember who they are.
+            </p>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="font-sans text-sm font-medium">
+                  Principal ID
+                </Label>
+                <Input
+                  value={addInput}
+                  onChange={(e) => {
+                    setAddInput(e.target.value);
+                    if (addError) setAddError("");
+                  }}
+                  placeholder="e.g. aaaaa-aa"
+                  className="font-mono text-sm"
+                  data-ocid="admin.add_admin.input"
+                />
+                {addError && (
+                  <p
+                    className="font-sans text-xs text-destructive"
+                    data-ocid="admin.add_admin.error_state"
                   >
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleRemoveAdmin}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-sans"
-                    data-ocid="admin.remove_admin.confirm_button"
-                  >
-                    Remove Admin
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    {addError}
+                  </p>
+                )}
+                {/* Show existing label if we already have one in localStorage */}
+                {addInput.trim() && adminNames[addInput.trim()] && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="font-sans text-xs text-muted-foreground">
+                      Known as:
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-sans text-xs font-medium">
+                      {adminNames[addInput.trim()]}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="font-sans text-sm font-medium">
+                  Name / Label{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="e.g. Sarah — my doubles partner"
+                  className="font-sans text-sm"
+                  data-ocid="admin.add_admin.name.input"
+                />
+                <p className="font-sans text-xs text-muted-foreground">
+                  Stored locally in your browser so you remember who this is.
+                </p>
+              </div>
+
+              <Button
+                onClick={handleAddAdmin}
+                disabled={!addInput.trim() || assignRoleWithCheck.isPending}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 font-sans font-semibold"
+                data-ocid="admin.add_admin.primary_button"
+              >
+                {assignRoleWithCheck.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Add as Admin
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

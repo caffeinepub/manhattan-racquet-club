@@ -113,6 +113,10 @@ export interface MembershipTier {
 export interface UserProfile {
     name: string;
 }
+export interface AdminEntry {
+    principal: Principal;
+    isSuperAdmin: boolean;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -121,6 +125,7 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignCallerUserRoleWithSuperAdminCheck(user: Principal, role: UserRole): Promise<void>;
     claimFirstAdmin(): Promise<boolean>;
     createAnnouncement(title: string, body: string): Promise<bigint>;
     createMembershipTier(name: string, price: string, benefits: Array<string>, displayOrder: bigint): Promise<bigint>;
@@ -128,6 +133,7 @@ export interface backendInterface {
     deleteAnnouncement(id: bigint): Promise<void>;
     deleteMembershipTier(id: bigint): Promise<void>;
     deleteStaffMember(id: bigint): Promise<void>;
+    getAllAdmins(): Promise<Array<AdminEntry>>;
     getAllAnnouncements(): Promise<Array<Announcement>>;
     getAllContent(): Promise<Array<[string, string]>>;
     getAllMembershipTiers(): Promise<Array<MembershipTier>>;
@@ -143,9 +149,11 @@ export interface backendInterface {
     hasAnyAdmin(): Promise<boolean>;
     initDefaultContent(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerSuperAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setAnnouncementPublished(id: bigint, published: boolean): Promise<void>;
     setContentByKey(key: string, content: string): Promise<void>;
+    setSuperAdmin(user: Principal, promote: boolean): Promise<void>;
     updateAnnouncement(id: bigint, title: string, body: string): Promise<void>;
     updateMembershipTier(id: bigint, name: string, price: string, benefits: Array<string>, displayOrder: bigint): Promise<void>;
     updateStaffMember(id: bigint, name: string, role: string, bio: string, displayOrder: bigint): Promise<void>;
@@ -178,6 +186,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async assignCallerUserRoleWithSuperAdminCheck(arg0: Principal, arg1: UserRole): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignCallerUserRoleWithSuperAdminCheck(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignCallerUserRoleWithSuperAdminCheck(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
@@ -276,6 +298,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteStaffMember(arg0);
+            return result;
+        }
+    }
+    async getAllAdmins(): Promise<Array<AdminEntry>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllAdmins();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllAdmins();
             return result;
         }
     }
@@ -489,6 +525,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async isCallerSuperAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerSuperAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerSuperAdmin();
+            return result;
+        }
+    }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
@@ -528,6 +578,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.setContentByKey(arg0, arg1);
+            return result;
+        }
+    }
+    async setSuperAdmin(arg0: Principal, arg1: boolean): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setSuperAdmin(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setSuperAdmin(arg0, arg1);
             return result;
         }
     }

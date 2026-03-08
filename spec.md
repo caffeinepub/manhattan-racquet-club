@@ -2,52 +2,36 @@
 
 ## Current State
 
-A tennis club website with four public pages (Landing, About, Membership, Contact) and an admin CMS dashboard at `/admin`. The backend includes authorization (access-control mixin), site content management, membership tiers, staff members, and announcements. The admin dashboard has tabs for Site Content, Membership, Staff, and Announcements.
-
-Currently, admin access requires a special token/secret to bootstrap the first admin. There is no way to manage (list, add, remove) admins from the dashboard.
+Full-stack tennis club website with:
+- Public pages: Landing, About, Membership, Contact
+- Admin dashboard at `/admin` with tabs: Site Content, Membership Tiers, Staff, Announcements, Admins
+- Two-tier admin system: regular Admin (manage content) and Superadmin (manage content + manage admins)
+- `claimFirstAdmin()` function: first login claims admin and superadmin
+- `hasAdminAssigned` stable var tracks whether any admin exists
+- `superAdmins` map (non-stable, restored in postupgrade from `stableSuperAdmins`)
+- Stable storage arrays persist all data across upgrades
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `registerCaller` function -- any authenticated (non-anonymous) caller can call this to register themselves; the very first one automatically becomes admin, all subsequent ones become regular users.
-- Backend: `listAdmins` query -- returns `[Principal]` of all current admins. Admin-only.
-- Backend: `addAdmin(user: Principal)` -- promotes a user to admin. Admin-only.
-- Backend: `removeAdmin(user: Principal)` -- demotes an admin to user. Admin-only. Must not allow removing yourself if you are the last admin.
-- Frontend: New "Admins" tab in the CMS dashboard, visible only to admins.
-  - Shows a list of current admins (with their Principal IDs).
-  - Allows adding a new admin by entering a Principal ID (text input + Add button).
-  - Allows removing any admin from the list (with a confirmation step), but prevents removing yourself if you're the only admin.
+- Migration guard in `postupgrade`: if `superAdmins` map is empty after restore but there are admins in `userRoles`, promote ALL existing admins to superadmin. This ensures no admin loses superadmin status after a deployment.
+- Enforce invariant: there must always be at least 1 superadmin. The `setSuperAdmin` demote operation must check that at least 1 superadmin will remain after demotion, and the remove admin operation must check the same.
 
 ### Modify
-- Backend: The login/auth flow should call `registerCaller` on first visit so the first person to log in automatically becomes admin -- no secret/token needed for this bootstrap step.
-- Frontend: AdminPage should call `registerCaller` after login (once) before checking `isCallerAdmin`, so new users are auto-registered and the first one gets admin rights.
+- `claimFirstAdmin()`: already sets caller as superadmin — keep this behavior, ensure it's robust.
+- `setSuperAdmin` with `promote=false` (demote): before removing from superAdmins, verify at least 1 other superadmin exists; trap with a clear message if not.
+- `assignCallerUserRoleWithSuperAdminCheck` (remove admin via role=#user): before removing, verify at least 1 superadmin will remain; trap if not.
+- `postupgrade`: add migration guard as described in Add section.
 
 ### Remove
-- Nothing removed from existing features.
+- Nothing removed.
 
 ## Implementation Plan
 
-1. Regenerate Motoko backend with:
-   - `registerCaller` public shared function (auto-promotes first caller to admin)
-   - `listAdmins` query (admin-only, returns [Principal])
-   - `addAdmin(user: Principal)` shared function (admin-only)
-   - `removeAdmin(user: Principal)` shared function (admin-only, must keep at least one admin)
-   - All existing functionality preserved
+1. Backend (Motoko): Regenerate with all existing functionality plus:
+   - Migration guard in `postupgrade`: if `superAdmins.size() == 0` after restore, iterate userRoles and add all `#admin` principals to superAdmins.
+   - `setSuperAdmin` demote guard: count remaining superadmins after proposed demotion; if count would be 0, trap("Cannot demote: at least one Superadmin must always exist").
+   - Remove admin guard in `assignCallerUserRoleWithSuperAdminCheck`: if role is `#user` (removal), check that the target is not the last superadmin; if they are, trap("Cannot remove: at least one Superadmin must always exist").
+   - Keep all other backend behavior identical.
 
-2. Update `backend.d.ts` to include new function signatures.
-
-3. Add frontend hooks in `useQueries.ts`:
-   - `useRegisterCaller` mutation
-   - `useListAdmins` query
-   - `useAddAdmin` mutation
-   - `useRemoveAdmin` mutation
-
-4. Call `registerCaller` in `AdminPage` after identity is available and before checking admin status.
-
-5. Add `AdminAdminsTab` component with:
-   - List of current admins
-   - Add admin form (Principal input + Add button)
-   - Remove button per admin (with AlertDialog confirmation)
-   - Guard: cannot remove self if last admin
-
-6. Wire "Admins" tab into the dashboard `TabsList` and `TabsContent`.
+2. Frontend: No changes needed -- error messages from backend traps already surface in the UI via existing error handling in AdminAdminsTab.

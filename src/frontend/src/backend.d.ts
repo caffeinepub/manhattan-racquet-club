@@ -31,6 +31,10 @@ export interface MembershipTier {
 export interface UserProfile {
     name: string;
 }
+export interface AdminEntry {
+    principal: Principal;
+    isSuperAdmin: boolean;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -38,6 +42,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignCallerUserRoleWithSuperAdminCheck(user: Principal, role: UserRole): Promise<void>;
     claimFirstAdmin(): Promise<boolean>;
     createAnnouncement(title: string, body: string): Promise<bigint>;
     createMembershipTier(name: string, price: string, benefits: Array<string>, displayOrder: bigint): Promise<bigint>;
@@ -45,6 +50,7 @@ export interface backendInterface {
     deleteAnnouncement(id: bigint): Promise<void>;
     deleteMembershipTier(id: bigint): Promise<void>;
     deleteStaffMember(id: bigint): Promise<void>;
+    getAllAdmins(): Promise<Array<AdminEntry>>;
     getAllAnnouncements(): Promise<Array<Announcement>>;
     getAllContent(): Promise<Array<[string, string]>>;
     getAllMembershipTiers(): Promise<Array<MembershipTier>>;
@@ -60,9 +66,11 @@ export interface backendInterface {
     hasAnyAdmin(): Promise<boolean>;
     initDefaultContent(): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerSuperAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setAnnouncementPublished(id: bigint, published: boolean): Promise<void>;
     setContentByKey(key: string, content: string): Promise<void>;
+    setSuperAdmin(user: Principal, promote: boolean): Promise<void>;
     updateAnnouncement(id: bigint, title: string, body: string): Promise<void>;
     updateMembershipTier(id: bigint, name: string, price: string, benefits: Array<string>, displayOrder: bigint): Promise<void>;
     updateStaffMember(id: bigint, name: string, role: string, bio: string, displayOrder: bigint): Promise<void>;

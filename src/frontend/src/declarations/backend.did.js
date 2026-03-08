@@ -13,6 +13,10 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const AdminEntry = IDL.Record({
+  'principal' : IDL.Principal,
+  'isSuperAdmin' : IDL.Bool,
+});
 export const Announcement = IDL.Record({
   'id' : IDL.Nat,
   'title' : IDL.Text,
@@ -39,6 +43,11 @@ export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'assignCallerUserRoleWithSuperAdminCheck' : IDL.Func(
+      [IDL.Principal, UserRole],
+      [],
+      [],
+    ),
   'claimFirstAdmin' : IDL.Func([], [IDL.Bool], []),
   'createAnnouncement' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
   'createMembershipTier' : IDL.Func(
@@ -54,6 +63,7 @@ export const idlService = IDL.Service({
   'deleteAnnouncement' : IDL.Func([IDL.Nat], [], []),
   'deleteMembershipTier' : IDL.Func([IDL.Nat], [], []),
   'deleteStaffMember' : IDL.Func([IDL.Nat], [], []),
+  'getAllAdmins' : IDL.Func([], [IDL.Vec(AdminEntry)], ['query']),
   'getAllAnnouncements' : IDL.Func([], [IDL.Vec(Announcement)], ['query']),
   'getAllContent' : IDL.Func(
       [],
@@ -81,9 +91,11 @@ export const idlService = IDL.Service({
   'hasAnyAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'initDefaultContent' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerSuperAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setAnnouncementPublished' : IDL.Func([IDL.Nat, IDL.Bool], [], []),
   'setContentByKey' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'setSuperAdmin' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
   'updateAnnouncement' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
   'updateMembershipTier' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Nat],
@@ -104,6 +116,10 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const AdminEntry = IDL.Record({
+    'principal' : IDL.Principal,
+    'isSuperAdmin' : IDL.Bool,
   });
   const Announcement = IDL.Record({
     'id' : IDL.Nat,
@@ -131,6 +147,11 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'assignCallerUserRoleWithSuperAdminCheck' : IDL.Func(
+        [IDL.Principal, UserRole],
+        [],
+        [],
+      ),
     'claimFirstAdmin' : IDL.Func([], [IDL.Bool], []),
     'createAnnouncement' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
     'createMembershipTier' : IDL.Func(
@@ -146,6 +167,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteAnnouncement' : IDL.Func([IDL.Nat], [], []),
     'deleteMembershipTier' : IDL.Func([IDL.Nat], [], []),
     'deleteStaffMember' : IDL.Func([IDL.Nat], [], []),
+    'getAllAdmins' : IDL.Func([], [IDL.Vec(AdminEntry)], ['query']),
     'getAllAnnouncements' : IDL.Func([], [IDL.Vec(Announcement)], ['query']),
     'getAllContent' : IDL.Func(
         [],
@@ -177,9 +199,11 @@ export const idlFactory = ({ IDL }) => {
     'hasAnyAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'initDefaultContent' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerSuperAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setAnnouncementPublished' : IDL.Func([IDL.Nat, IDL.Bool], [], []),
     'setContentByKey' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'setSuperAdmin' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
     'updateAnnouncement' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
     'updateMembershipTier' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Nat],

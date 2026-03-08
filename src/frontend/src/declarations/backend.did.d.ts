@@ -10,6 +10,10 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminEntry {
+  'principal' : Principal,
+  'isSuperAdmin' : boolean,
+}
 export interface Announcement {
   'id' : bigint,
   'title' : string,
@@ -38,6 +42,10 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'assignCallerUserRoleWithSuperAdminCheck' : ActorMethod<
+    [Principal, UserRole],
+    undefined
+  >,
   'claimFirstAdmin' : ActorMethod<[], boolean>,
   'createAnnouncement' : ActorMethod<[string, string], bigint>,
   'createMembershipTier' : ActorMethod<
@@ -48,6 +56,7 @@ export interface _SERVICE {
   'deleteAnnouncement' : ActorMethod<[bigint], undefined>,
   'deleteMembershipTier' : ActorMethod<[bigint], undefined>,
   'deleteStaffMember' : ActorMethod<[bigint], undefined>,
+  'getAllAdmins' : ActorMethod<[], Array<AdminEntry>>,
   'getAllAnnouncements' : ActorMethod<[], Array<Announcement>>,
   'getAllContent' : ActorMethod<[], Array<[string, string]>>,
   'getAllMembershipTiers' : ActorMethod<[], Array<MembershipTier>>,
@@ -63,9 +72,11 @@ export interface _SERVICE {
   'hasAnyAdmin' : ActorMethod<[], boolean>,
   'initDefaultContent' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isCallerSuperAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setAnnouncementPublished' : ActorMethod<[bigint, boolean], undefined>,
   'setContentByKey' : ActorMethod<[string, string], undefined>,
+  'setSuperAdmin' : ActorMethod<[Principal, boolean], undefined>,
   'updateAnnouncement' : ActorMethod<[bigint, string, string], undefined>,
   'updateMembershipTier' : ActorMethod<
     [bigint, string, string, Array<string>, bigint],

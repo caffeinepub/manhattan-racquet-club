@@ -171,7 +171,7 @@ function AccessDenied() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────
-function Dashboard() {
+function Dashboard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const { clear, identity } = useInternetIdentity();
   const principal = identity?.getPrincipal().toString();
   const short = principal ? `${principal.slice(0, 8)}…` : "";
@@ -195,6 +195,24 @@ function Dashboard() {
             <span className="font-mono text-xs text-sidebar-foreground/50 hidden sm:block">
               {short}
             </span>
+          )}
+          {/* Role badge */}
+          {isSuperAdmin ? (
+            <Badge
+              className="font-sans text-xs font-semibold px-2 py-0.5 bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700 hidden sm:inline-flex"
+              variant="outline"
+              data-ocid="admin.superadmin.toggle"
+            >
+              Superadmin
+            </Badge>
+          ) : (
+            <Badge
+              className="font-sans text-xs font-semibold px-2 py-0.5 hidden sm:inline-flex"
+              variant="secondary"
+              data-ocid="admin.admin.toggle"
+            >
+              Admin
+            </Badge>
           )}
           <Button
             size="sm"
@@ -275,7 +293,7 @@ function Dashboard() {
               <AdminAnnouncementsTab />
             </TabsContent>
             <TabsContent value="admins">
-              <AdminAdminsTab />
+              <AdminAdminsTab isSuperAdmin={isSuperAdmin} />
             </TabsContent>
           </Tabs>
         </motion.div>
@@ -292,6 +310,7 @@ export default function AdminPage() {
   const { identity, isInitializing } = useInternetIdentity();
   const { actor, isFetching: actorFetching } = useActor();
   const [authState, setAuthState] = useState<AdminAuthState>("loading");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   // Track which identity we've already processed to avoid re-running the flow
   const processedPrincipal = useRef<string | null>(null);
 
@@ -328,6 +347,8 @@ export default function AdminPage() {
           if (cancelled) return;
           if (claimed) {
             processedPrincipal.current = principal;
+            // First admin is always superadmin
+            setIsSuperAdmin(true);
             setAuthState("dashboard");
           } else {
             // Race condition: someone else claimed it first
@@ -337,13 +358,19 @@ export default function AdminPage() {
         } else {
           // Admin already exists — check if this caller is an admin
           let isAdmin = false;
+          let superAdmin = false;
           try {
-            isAdmin = await actor!.isCallerAdmin();
+            [isAdmin, superAdmin] = await Promise.all([
+              actor!.isCallerAdmin(),
+              actor!.isCallerSuperAdmin(),
+            ]);
           } catch {
             isAdmin = false;
+            superAdmin = false;
           }
           if (cancelled) return;
           processedPrincipal.current = principal;
+          setIsSuperAdmin(superAdmin);
           setAuthState(isAdmin ? "dashboard" : "denied");
         }
       } catch {
@@ -386,5 +413,5 @@ export default function AdminPage() {
     return <AccessDenied />;
   }
 
-  return <Dashboard />;
+  return <Dashboard isSuperAdmin={isSuperAdmin} />;
 }

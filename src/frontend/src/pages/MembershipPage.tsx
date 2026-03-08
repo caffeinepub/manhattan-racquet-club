@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
 import { motion } from "motion/react";
+import { useImageUrl } from "../hooks/useImageUrl";
 import { useAllMembershipTiers, useContentByKey } from "../hooks/useQueries";
 
 function SectionLabel({ text }: { text: string }) {
@@ -20,6 +21,10 @@ function SectionLabel({ text }: { text: string }) {
 export default function MembershipPage() {
   const intro = useContentByKey("membership_intro");
   const { data: tiers, isLoading: tiersLoading } = useAllMembershipTiers();
+  const membershipBannerUrl = useImageUrl(
+    "img_membership_banner",
+    "/assets/generated/hero-membership.dim_1400x600.jpg",
+  );
 
   const sortedTiers = [...(tiers ?? [])].sort(
     (a, b) => Number(a.displayOrder) - Number(b.displayOrder),
@@ -32,10 +37,18 @@ export default function MembershipPage() {
     <div className="overflow-x-hidden">
       {/* ─── Hero Banner ───────────────────────────────────────── */}
       <section
-        className="bg-primary py-24 relative overflow-hidden"
+        className="relative py-24 overflow-hidden"
         data-ocid="membership.page"
       >
-        <div className="absolute inset-0 court-texture opacity-30" />
+        {/* Background image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={membershipBannerUrl}
+            alt="Manhattan Racquet Club membership"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/80 via-primary/70 to-primary/90" />
+        </div>
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}

@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Award, Dumbbell, Users } from "lucide-react";
 import { motion } from "motion/react";
+import { useImageUrl } from "../hooks/useImageUrl";
 import {
   useContentByKey,
   usePublishedAnnouncements,
@@ -48,6 +49,10 @@ export default function LandingPage() {
   const welcomeText = useContentByKey("landing_welcome_text");
   const { data: announcements, isLoading: annsLoading } =
     usePublishedAnnouncements();
+  const heroImageUrl = useImageUrl(
+    "img_landing_hero",
+    "/assets/generated/hero-landing.dim_1600x700.jpg",
+  );
 
   return (
     <div className="overflow-x-hidden">
@@ -59,7 +64,7 @@ export default function LandingPage() {
         {/* Background image */}
         <div className="absolute inset-0 z-0">
           <img
-            src="/assets/generated/hero-tennis-courts.dim_1600x900.jpg"
+            src={heroImageUrl}
             alt="Manhattan Racquet Club indoor courts"
             className="w-full h-full object-cover"
           />

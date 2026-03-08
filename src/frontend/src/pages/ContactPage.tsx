@@ -7,6 +7,7 @@ import { Mail, MapPin, Phone } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useImageUrl } from "../hooks/useImageUrl";
 import { useContentByKey } from "../hooks/useQueries";
 
 function SectionLabel({ text }: { text: string }) {
@@ -24,6 +25,10 @@ export default function ContactPage() {
   const address = useContentByKey("contact_address");
   const phone = useContentByKey("contact_phone");
   const email = useContentByKey("contact_email");
+  const contactBannerUrl = useImageUrl(
+    "img_contact_banner",
+    "/assets/generated/hero-contact.dim_1400x600.jpg",
+  );
 
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -43,10 +48,18 @@ export default function ContactPage() {
     <div className="overflow-x-hidden">
       {/* ─── Hero Banner ───────────────────────────────────────── */}
       <section
-        className="bg-primary py-24 relative overflow-hidden"
+        className="relative py-24 overflow-hidden"
         data-ocid="contact.page"
       >
-        <div className="absolute inset-0 court-texture opacity-30" />
+        {/* Background image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={contactBannerUrl}
+            alt="Manhattan Racquet Club exterior"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/80 via-primary/70 to-primary/90" />
+        </div>
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}

@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "motion/react";
+import { useImageUrl } from "../hooks/useImageUrl";
 import { useAllStaffMembers, useContentByKey } from "../hooks/useQueries";
 
 function SectionLabel({ text }: { text: string }) {
@@ -13,10 +14,48 @@ function SectionLabel({ text }: { text: string }) {
   );
 }
 
+// Staff photo default URLs mapped by display order (1-based)
+const STAFF_DEFAULTS: Record<number, string> = {
+  1: "/assets/generated/staff-sarah.dim_400x400.jpg",
+  2: "/assets/generated/staff-carlos.dim_400x400.jpg",
+  3: "/assets/generated/staff-emily.dim_400x400.jpg",
+};
+
+function StaffPhoto({
+  displayOrder,
+  name,
+}: {
+  displayOrder: number;
+  name: string;
+}) {
+  const pos = displayOrder <= 3 ? displayOrder : displayOrder;
+  const defaultUrl =
+    STAFF_DEFAULTS[pos] ?? "/assets/generated/staff-sarah.dim_400x400.jpg";
+  const photoUrl = useImageUrl(`img_staff_photo_${pos}`, defaultUrl);
+
+  return (
+    <div className="w-16 h-16 rounded-sm overflow-hidden bg-primary/10 shrink-0 mb-4">
+      <img
+        src={photoUrl}
+        alt={name}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          // Fallback to initials on image load error
+          (e.currentTarget as HTMLImageElement).style.display = "none";
+        }}
+      />
+    </div>
+  );
+}
+
 export default function AboutPage() {
   const history = useContentByKey("about_history");
   const mission = useContentByKey("about_mission");
   const { data: staff, isLoading: staffLoading } = useAllStaffMembers();
+  const aboutBannerUrl = useImageUrl(
+    "img_about_banner",
+    "/assets/generated/hero-about.dim_1400x600.jpg",
+  );
 
   const sortedStaff = [...(staff ?? [])].sort(
     (a, b) => Number(a.displayOrder) - Number(b.displayOrder),
@@ -26,10 +65,18 @@ export default function AboutPage() {
     <div className="overflow-x-hidden">
       {/* ─── Hero Banner ───────────────────────────────────────── */}
       <section
-        className="bg-primary py-24 relative overflow-hidden"
+        className="relative py-24 overflow-hidden"
         data-ocid="about.page"
       >
-        <div className="absolute inset-0 court-texture opacity-30" />
+        {/* Background image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={aboutBannerUrl}
+            alt="Manhattan Racquet Club courts"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/80 via-primary/70 to-primary/90" />
+        </div>
         <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -191,16 +238,11 @@ export default function AboutPage() {
                   className="bg-card border border-border rounded-lg p-6 shadow-club"
                   data-ocid={`about.staff.card.${i + 1}`}
                 >
-                  {/* Initials avatar */}
-                  <div className="w-12 h-12 rounded-sm bg-primary/10 flex items-center justify-center mb-4">
-                    <span className="font-display font-bold text-primary text-lg">
-                      {member.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </span>
-                  </div>
+                  {/* Staff photo */}
+                  <StaffPhoto
+                    displayOrder={Number(member.displayOrder)}
+                    name={member.name}
+                  />
                   <h3 className="font-display font-bold text-foreground text-lg leading-tight">
                     {member.name}
                   </h3>

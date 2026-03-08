@@ -41,6 +41,7 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import AdminAdminsTab from "./admin/AdminAdminsTab";
 import AdminAnnouncementsTab from "./admin/AdminAnnouncementsTab";
 import AdminContentTab from "./admin/AdminContentTab";
+import AdminImagesTab from "./admin/AdminImagesTab";
 import AdminStaffTab from "./admin/AdminStaffTab";
 import AdminTiersTab from "./admin/AdminTiersTab";
 
@@ -272,6 +273,13 @@ function Dashboard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 Announcements
               </TabsTrigger>
               <TabsTrigger
+                value="images"
+                className="font-sans text-sm"
+                data-ocid="admin.images.tab"
+              >
+                Images
+              </TabsTrigger>
+              <TabsTrigger
                 value="admins"
                 className="font-sans text-sm"
                 data-ocid="admin.admins.tab"
@@ -291,6 +299,9 @@ function Dashboard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             </TabsContent>
             <TabsContent value="announcements">
               <AdminAnnouncementsTab />
+            </TabsContent>
+            <TabsContent value="images">
+              <AdminImagesTab />
             </TabsContent>
             <TabsContent value="admins">
               <AdminAdminsTab isSuperAdmin={isSuperAdmin} />

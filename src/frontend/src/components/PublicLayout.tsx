@@ -3,6 +3,12 @@ import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
+const appVersion: string =
+  (import.meta.env.VITE_APP_VERSION as string | undefined) ||
+  (import.meta.env.VITE_CAFFEINE_DRAFT_VERSION as string | undefined) ||
+  (import.meta.env.CAFFEINE_DRAFT_VERSION as string | undefined) ||
+  "dev";
+
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/about", label: "About" },
@@ -176,9 +182,13 @@ export default function PublicLayout() {
           </div>
 
           <div className="border-t border-primary-foreground/20 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="font-sans text-xs text-primary-foreground/50">
+            <p className="font-sans text-xs text-primary-foreground/50 flex items-center gap-2">
               © {new Date().getFullYear()} Manhattan Racquet Club. All rights
               reserved.
+              <span className="text-primary-foreground/30" aria-hidden="true">
+                •
+              </span>
+              <span>{appVersion}</span>
             </p>
             <a
               href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}

@@ -28,13 +28,15 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type {
   Announcement,
   MembershipTier,
   StaffMember,
+  backendInterface,
 } from "../backend.d.ts";
+import { createActorWithConfig } from "../config";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
@@ -316,18 +318,37 @@ function Dashboard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ─── Auth state type ──────────────────────────────────────────────────────
 type AdminAuthState = "loading" | "login" | "dashboard" | "denied";
 
+// ─── Build a raw actor bypassing useActor (which may trap) ───────────────
+async function buildRawActor(
+  identity: import("@icp-sdk/core/agent").Identity,
+): Promise<backendInterface> {
+  return createActorWithConfig({ agentOptions: { identity } });
+}
+
 // ─── Main Admin Page ──────────────────────────────────────────────────────
 export default function AdminPage() {
   const { identity, isInitializing } = useInternetIdentity();
-  const { actor, isFetching: actorFetching } = useActor();
+  const { actor: hookActor, isFetching: actorFetching } = useActor();
   const [authState, setAuthState] = useState<AdminAuthState>("loading");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   // Track which identity we've already processed to avoid re-running the flow
   const processedPrincipal = useRef<string | null>(null);
 
+  const getActor = useCallback(async (): Promise<backendInterface | null> => {
+    if (hookActor) return hookActor;
+    if (identity) {
+      try {
+        return await buildRawActor(identity);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [hookActor, identity]);
+
   useEffect(() => {
-    // Wait until identity and actor are both ready
-    if (isInitializing || actorFetching) return;
+    // Wait until identity initialization is done
+    if (isInitializing) return;
 
     // No identity → show login
     if (!identity) {
@@ -336,7 +357,9 @@ export default function AdminPage() {
       return;
     }
 
-    if (!actor) return;
+    // If useActor is still fetching and hasn't failed yet, wait a tick
+    // But don't wait forever — if actor is null after fetching is done, we build our own
+    if (actorFetching && !hookActor) return;
 
     const principal = identity.getPrincipal().toString();
 
@@ -348,13 +371,22 @@ export default function AdminPage() {
     async function runAuthFlow() {
       setAuthState("loading");
       try {
-        const hasAdmin = await actor!.hasAnyAdmin();
+        const actor = await getActor();
+        if (!actor) {
+          if (!cancelled) {
+            processedPrincipal.current = principal;
+            setAuthState("denied");
+          }
+          return;
+        }
+
+        const hasAdmin = await actor.hasAnyAdmin();
 
         if (cancelled) return;
 
         if (!hasAdmin) {
           // No admin yet — try to claim the first-admin slot
-          const claimed = await actor!.claimFirstAdmin();
+          const claimed = await actor.claimFirstAdmin();
           if (cancelled) return;
           if (claimed) {
             processedPrincipal.current = principal;
@@ -372,8 +404,8 @@ export default function AdminPage() {
           let superAdmin = false;
           try {
             [isAdmin, superAdmin] = await Promise.all([
-              actor!.isCallerAdmin(),
-              actor!.isCallerSuperAdmin(),
+              actor.isCallerAdmin(),
+              actor.isCallerSuperAdmin(),
             ]);
           } catch {
             isAdmin = false;
@@ -397,7 +429,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [identity, actor, isInitializing, actorFetching]);
+  }, [identity, hookActor, actorFetching, isInitializing, getActor]);
 
   if (authState === "loading") {
     return (

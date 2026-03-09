@@ -9,7 +9,6 @@ import { HttpAgent } from "@icp-sdk/core/agent";
 
 const DEFAULT_STORAGE_GATEWAY_URL = "https://blob.caffeine.ai";
 const DEFAULT_BUCKET_NAME = "default-bucket";
-const DEFAULT_PROJECT_ID = "00000000-0000-0000-0000-000000000000";
 
 interface JsonConfig {
   backend_host: string;
@@ -44,18 +43,21 @@ export async function loadConfig(): Promise<Config> {
       throw new Error("CANISTER_ID_BACKEND is not set");
     }
 
+    const resolvedCanisterId = (config.backend_canister_id === "undefined"
+      ? backendCanisterId
+      : config.backend_canister_id) as string;
+
     const fullConfig = {
       backend_host:
         config.backend_host === "undefined" ? undefined : config.backend_host,
-      backend_canister_id: (config.backend_canister_id === "undefined"
-        ? backendCanisterId
-        : config.backend_canister_id) as string,
+      backend_canister_id: resolvedCanisterId,
       storage_gateway_url: process.env.STORAGE_GATEWAY_URL ?? "nogateway",
       bucket_name: DEFAULT_BUCKET_NAME,
+      // Fall back to backend canister ID if no valid project_id is available
       project_id:
-        config.project_id !== "undefined"
+        config.project_id && config.project_id !== "undefined"
           ? config.project_id
-          : DEFAULT_PROJECT_ID,
+          : resolvedCanisterId,
       ii_derivation_origin:
         config.ii_derivation_origin === "undefined"
           ? undefined
@@ -73,7 +75,8 @@ export async function loadConfig(): Promise<Config> {
       backend_canister_id: backendCanisterId,
       storage_gateway_url: DEFAULT_STORAGE_GATEWAY_URL,
       bucket_name: DEFAULT_BUCKET_NAME,
-      project_id: DEFAULT_PROJECT_ID,
+      // Use canister ID as project ID fallback -- avoids malformed UUID rejection
+      project_id: backendCanisterId,
       ii_derivation_origin: undefined,
     };
     return fallbackConfig;
@@ -99,8 +102,6 @@ async function maybeLoadMockBackend(): Promise<backendInterface | null> {
   }
 
   try {
-    // If VITE_USE_MOCK is enabled, try to load a mock backend module *if it exists*.
-    // We use import.meta.glob so builds don't fail when the mock file is absent.
     const mockModules = import.meta.glob("./mocks/backend.{ts,tsx,js,jsx}");
 
     const path = Object.keys(mockModules)[0];
@@ -119,7 +120,6 @@ async function maybeLoadMockBackend(): Promise<backendInterface | null> {
 export async function createActorWithConfig(
   options?: CreateActorOptions,
 ): Promise<backendInterface> {
-  // Attempt to load mock backend if enabled
   const mock = await maybeLoadMockBackend();
   if (mock) {
     return mock;

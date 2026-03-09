@@ -9,28 +9,46 @@ function getEnvValue(key: string): string | null {
   return val && val !== "undefined" ? val : null;
 }
 
-function isStorageAvailable(): boolean {
-  return (
-    !!getEnvValue("backend_host") &&
-    !!getEnvValue("backend_canister_id") &&
-    !!getEnvValue("project_id")
-  );
+function getBackendHost(): string | null {
+  // env.json first (populated at build time for production)
+  const fromEnv = getEnvValue("backend_host");
+  if (fromEnv) return fromEnv;
+  // In Caffeine production builds, DFX_NETWORK=ic
+  const network = (import.meta.env.DFX_NETWORK as string | undefined) ?? "";
+  if (network === "ic") return "https://icp0.io";
+  // If we have a valid canister ID, we must be in production on ICP mainnet
+  const canisterId = getBackendCanisterId();
+  if (canisterId) return "https://icp0.io";
+  return null;
 }
 
-function getStorageGatewayUrl(host: string): string {
-  // Derive storage gateway from backend host
-  const storageUrl = getEnvValue("storage_gateway_url");
-  if (storageUrl) return storageUrl;
+function getBackendCanisterId(): string | null {
+  const fromEnv = getEnvValue("backend_canister_id");
+  if (fromEnv) return fromEnv;
+  // Vite injects CANISTER_ID_BACKEND during production build
+  const fromVite = import.meta.env.CANISTER_ID_BACKEND as string | undefined;
+  if (fromVite && fromVite !== "undefined") return fromVite;
+  return null;
+}
 
-  // If backend host ends with icp0.io or icp-api.io, use the caffeine storage gateway
-  // pattern. Otherwise construct from host.
-  try {
-    const url = new URL(host);
-    // Try: replace host with storage gateway
-    return `${url.protocol}//${url.hostname}/storage`;
-  } catch {
-    return `${host}/storage`;
-  }
+function getProjectId(): string | null {
+  const fromEnv = getEnvValue("project_id");
+  if (fromEnv) return fromEnv;
+  // Fall back to backend canister id as the project id
+  return getBackendCanisterId();
+}
+
+function isStorageAvailable(): boolean {
+  return !!getBackendHost() && !!getBackendCanisterId() && !!getProjectId();
+}
+
+function getStorageGatewayUrl(): string {
+  // STORAGE_GATEWAY_URL is injected by Vite (set to https://blob.caffeine.ai in vite.config.js)
+  const fromVite = import.meta.env.STORAGE_GATEWAY_URL as string | undefined;
+  if (fromVite && fromVite !== "undefined") return fromVite;
+  const fromEnv = getEnvValue("storage_gateway_url");
+  if (fromEnv) return fromEnv;
+  return "https://blob.caffeine.ai";
 }
 
 export interface StorageClientHook {
@@ -60,10 +78,10 @@ export function useStorageClient(): StorageClientHook {
       };
     }
 
-    const host = getEnvValue("backend_host")!;
-    const backendCanisterId = getEnvValue("backend_canister_id")!;
-    const projectId = getEnvValue("project_id")!;
-    const storageGatewayUrl = getStorageGatewayUrl(host);
+    const host = getBackendHost()!;
+    const backendCanisterId = getBackendCanisterId()!;
+    const projectId = getProjectId()!;
+    const storageGatewayUrl = getStorageGatewayUrl();
 
     async function createClient(withIdentity: boolean): Promise<StorageClient> {
       const agentOptions = withIdentity && identity ? { identity } : {};

@@ -109,6 +109,14 @@ actor {
     };
   };
 
+  // ========== Helper: any admin in the roles map? ==========
+  func hasAdminInMap() : Bool {
+    for ((_, role) in accessControlState.userRoles.entries()) {
+      if (role == #admin) { return true };
+    };
+    false;
+  };
+
   // ========== Upgrade hooks ==========
   system func preupgrade() {
     stableSuperAdmins := superAdmins.toArray();
@@ -137,7 +145,7 @@ actor {
     nextAnnouncementId := stableNextAnnouncementId;
     isInitialized := stableIsInitialized;
 
-    // Migration guard: if no superadmins were persisted, add all existing admins
+    // Migration guard: if no superadmins were persisted, promote all existing admins
     if (superAdmins.size() == 0) {
       for ((principal, role) in accessControlState.userRoles.entries()) {
         if (role == #admin) {
@@ -148,9 +156,12 @@ actor {
   };
 
   // ========== Two-Tier Admin System ==========
+  // Allows claiming if no admin is assigned OR if the admin flag is set but
+  // the roles map is empty (state-corruption recovery after a bad redeploy).
   public shared ({ caller }) func claimFirstAdmin() : async Bool {
     if (caller.isAnonymous()) { return false };
-    if (hasAdminAssigned) { return false };
+    // If an admin is assigned AND the map contains at least one admin, reject.
+    if (hasAdminAssigned and hasAdminInMap()) { return false };
     accessControlState.userRoles.add(caller, #admin);
     superAdmins.add(caller, true);
     hasAdminAssigned := true;

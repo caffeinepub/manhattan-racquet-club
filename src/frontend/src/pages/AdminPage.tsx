@@ -335,14 +335,15 @@ export default function AdminPage() {
   const processedPrincipal = useRef<string | null>(null);
 
   const getActor = useCallback(async (): Promise<backendInterface | null> => {
-    if (hookActor) return hookActor;
     if (identity) {
       try {
+        // Always build a raw actor to avoid _initializeAccessControlWithSecret trap
         return await buildRawActor(identity);
       } catch {
-        return null;
+        // fall through
       }
     }
+    if (hookActor) return hookActor;
     return null;
   }, [hookActor, identity]);
 
@@ -357,8 +358,7 @@ export default function AdminPage() {
       return;
     }
 
-    // If useActor is still fetching and hasn't failed yet, wait a tick
-    // But don't wait forever — if actor is null after fetching is done, we build our own
+    // If useActor is still fetching and we have no hookActor yet, wait briefly
     if (actorFetching && !hookActor) return;
 
     const principal = identity.getPrincipal().toString();
@@ -385,36 +385,63 @@ export default function AdminPage() {
         if (cancelled) return;
 
         if (!hasAdmin) {
-          // No admin yet — try to claim the first-admin slot
+          // No admin yet — claim the first-admin slot
           const claimed = await actor.claimFirstAdmin();
           if (cancelled) return;
           if (claimed) {
             processedPrincipal.current = principal;
-            // First admin is always superadmin
             setIsSuperAdmin(true);
             setAuthState("dashboard");
           } else {
-            // Race condition: someone else claimed it first
             processedPrincipal.current = principal;
             setAuthState("denied");
           }
         } else {
-          // Admin already exists — check if this caller is an admin
+          // Admin exists — check role individually to avoid one error silencing the other
           let isAdmin = false;
           let superAdmin = false;
+
           try {
-            [isAdmin, superAdmin] = await Promise.all([
-              actor.isCallerAdmin(),
-              actor.isCallerSuperAdmin(),
-            ]);
+            isAdmin = await actor.isCallerAdmin();
           } catch {
             isAdmin = false;
+          }
+
+          if (cancelled) return;
+
+          // Recovery path: if not recognised as admin, try claiming.
+          // The backend will only allow this if the roles map is empty
+          // (state-corruption scenario after a bad redeploy).
+          if (!isAdmin) {
+            let recovered = false;
+            try {
+              recovered = await actor.claimFirstAdmin();
+            } catch {
+              recovered = false;
+            }
+            if (cancelled) return;
+            if (recovered) {
+              processedPrincipal.current = principal;
+              setIsSuperAdmin(true);
+              setAuthState("dashboard");
+              return;
+            }
+            // Truly not an admin
+            processedPrincipal.current = principal;
+            setAuthState("denied");
+            return;
+          }
+
+          try {
+            superAdmin = await actor.isCallerSuperAdmin();
+          } catch {
             superAdmin = false;
           }
+
           if (cancelled) return;
           processedPrincipal.current = principal;
           setIsSuperAdmin(superAdmin);
-          setAuthState(isAdmin ? "dashboard" : "denied");
+          setAuthState("dashboard");
         }
       } catch {
         if (!cancelled) {

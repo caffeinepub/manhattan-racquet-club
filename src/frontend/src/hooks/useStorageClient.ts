@@ -1,62 +1,17 @@
 import { HttpAgent } from "@icp-sdk/core/agent";
-import { useMemo } from "react";
-import envJson from "../../env.json";
+import { useEffect, useMemo, useState } from "react";
+import { loadConfig } from "../config";
 import { StorageClient } from "../utils/StorageClient";
 import { useInternetIdentity } from "./useInternetIdentity";
 
-function getEnvValue(key: string): string | null {
-  const val = (envJson as Record<string, string>)[key];
-  return val && val !== "undefined" ? val : null;
-}
+const DEFAULT_STORAGE_GATEWAY_URL = "https://blob.caffeine.ai";
 
-function getBackendCanisterId(): string | null {
-  const fromEnv = getEnvValue("backend_canister_id");
-  if (fromEnv) return fromEnv;
-  // vite-plugin-environment injects as process.env.* at build time
-  const fromProcess = process.env.CANISTER_ID_BACKEND;
-  if (fromProcess && fromProcess !== "undefined") return fromProcess;
-  // Fallback: import.meta.env (works when VITE_ prefix or some setups)
-  const fromVite = import.meta.env.CANISTER_ID_BACKEND as string | undefined;
-  if (fromVite && fromVite !== "undefined") return fromVite;
-  return null;
-}
-
-function getBackendHost(): string | null {
-  // env.json first (populated at build time for production)
-  const fromEnv = getEnvValue("backend_host");
-  if (fromEnv) return fromEnv;
-  // In Caffeine production builds, DFX_NETWORK=ic
-  const network =
-    (process.env.DFX_NETWORK as string | undefined) ??
-    (import.meta.env.DFX_NETWORK as string | undefined) ??
-    "";
-  if (network === "ic") return "https://icp0.io";
-  // If we have a valid canister ID, we must be in production on ICP mainnet
-  const canisterId = getBackendCanisterId();
-  if (canisterId) return "https://icp0.io";
-  return null;
-}
-
-function getProjectId(): string | null {
-  const fromEnv = getEnvValue("project_id");
-  if (fromEnv) return fromEnv;
-  // Fall back to backend canister id as the project id
-  return getBackendCanisterId();
-}
-
-function isStorageAvailable(): boolean {
-  return !!getBackendHost() && !!getBackendCanisterId() && !!getProjectId();
-}
-
-function getStorageGatewayUrl(): string {
-  // vite-plugin-environment injects as process.env.* at build time
-  const fromProcess = process.env.STORAGE_GATEWAY_URL;
-  if (fromProcess && fromProcess !== "undefined") return fromProcess;
-  const fromVite = import.meta.env.STORAGE_GATEWAY_URL as string | undefined;
-  if (fromVite && fromVite !== "undefined") return fromVite;
-  const fromEnv = getEnvValue("storage_gateway_url");
-  if (fromEnv) return fromEnv;
-  return "https://blob.caffeine.ai";
+interface ResolvedConfig {
+  backendCanisterId: string;
+  host: string;
+  storageGatewayUrl: string;
+  projectId: string;
+  bucketName: string;
 }
 
 export interface StorageClientHook {
@@ -68,34 +23,60 @@ export interface StorageClientHook {
   getURL: (hash: string) => Promise<string>;
 }
 
+const unavailable: StorageClientHook = {
+  available: false,
+  upload: async () => {
+    throw new Error("Storage is not available in preview mode");
+  },
+  getURL: async () => {
+    throw new Error("Storage is not available in preview mode");
+  },
+};
+
 export function useStorageClient(): StorageClientHook {
   const { identity } = useInternetIdentity();
+  const [resolvedConfig, setResolvedConfig] = useState<ResolvedConfig | null>(
+    null,
+  );
 
-  const client = useMemo<StorageClientHook>(() => {
-    const available = isStorageAvailable();
+  useEffect(() => {
+    loadConfig()
+      .then((cfg) => {
+        if (!cfg.backend_canister_id) return;
+        setResolvedConfig({
+          backendCanisterId: cfg.backend_canister_id,
+          host: cfg.backend_host ?? "https://icp0.io",
+          storageGatewayUrl:
+            cfg.storage_gateway_url &&
+            cfg.storage_gateway_url !== "undefined" &&
+            cfg.storage_gateway_url !== "nogateway"
+              ? cfg.storage_gateway_url
+              : DEFAULT_STORAGE_GATEWAY_URL,
+          projectId: cfg.project_id ?? cfg.backend_canister_id,
+          bucketName: cfg.bucket_name,
+        });
+      })
+      .catch(() => {
+        /* storage unavailable */
+      });
+  }, []);
 
-    if (!available) {
-      return {
-        available: false,
-        upload: async () => {
-          throw new Error("Storage is not available in preview mode");
-        },
-        getURL: async () => {
-          throw new Error("Storage is not available in preview mode");
-        },
-      };
-    }
+  return useMemo<StorageClientHook>(() => {
+    if (!resolvedConfig) return unavailable;
 
-    const host = getBackendHost()!;
-    const backendCanisterId = getBackendCanisterId()!;
-    const projectId = getProjectId()!;
-    const storageGatewayUrl = getStorageGatewayUrl();
+    const {
+      backendCanisterId,
+      host,
+      storageGatewayUrl,
+      projectId,
+      bucketName,
+    } = resolvedConfig;
 
     async function createClient(withIdentity: boolean): Promise<StorageClient> {
       const agentOptions = withIdentity && identity ? { identity } : {};
       const agent = await HttpAgent.create({ host, ...agentOptions });
       return new StorageClient(
-        "default",
+        bucketName,
         storageGatewayUrl,
         backendCanisterId,
         projectId,
@@ -115,7 +96,5 @@ export function useStorageClient(): StorageClientHook {
         return sc.getDirectURL(hash);
       },
     };
-  }, [identity]);
-
-  return client;
+  }, [resolvedConfig, identity]);
 }

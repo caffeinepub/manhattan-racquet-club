@@ -9,7 +9,7 @@ import { HttpAgent } from "@icp-sdk/core/agent";
 
 const DEFAULT_STORAGE_GATEWAY_URL = "https://blob.caffeine.ai";
 const DEFAULT_BUCKET_NAME = "default-bucket";
-const DEFAULT_PROJECT_ID = "0000000-0000-0000-0000-00000000000";
+const DEFAULT_PROJECT_ID = "00000000-0000-0000-0000-000000000000";
 
 interface JsonConfig {
   backend_host: string;

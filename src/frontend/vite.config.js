@@ -42,11 +42,6 @@ export default defineConfig({
     environment("all", { prefix: "DFX_" }),
     environment(["II_URL"]),
     environment(["STORAGE_GATEWAY_URL"]),
-    environment({
-      VITE_APP_VERSION: "",
-      VITE_CAFFEINE_DRAFT_VERSION: "",
-      CAFFEINE_DRAFT_VERSION: "",
-    }),
     react(),
   ],
   resolve: {

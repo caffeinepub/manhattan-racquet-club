@@ -9,25 +9,31 @@ function getEnvValue(key: string): string | null {
   return val && val !== "undefined" ? val : null;
 }
 
+function getBackendCanisterId(): string | null {
+  const fromEnv = getEnvValue("backend_canister_id");
+  if (fromEnv) return fromEnv;
+  // vite-plugin-environment injects as process.env.* at build time
+  const fromProcess = process.env.CANISTER_ID_BACKEND;
+  if (fromProcess && fromProcess !== "undefined") return fromProcess;
+  // Fallback: import.meta.env (works when VITE_ prefix or some setups)
+  const fromVite = import.meta.env.CANISTER_ID_BACKEND as string | undefined;
+  if (fromVite && fromVite !== "undefined") return fromVite;
+  return null;
+}
+
 function getBackendHost(): string | null {
   // env.json first (populated at build time for production)
   const fromEnv = getEnvValue("backend_host");
   if (fromEnv) return fromEnv;
   // In Caffeine production builds, DFX_NETWORK=ic
-  const network = (import.meta.env.DFX_NETWORK as string | undefined) ?? "";
+  const network =
+    (process.env.DFX_NETWORK as string | undefined) ??
+    (import.meta.env.DFX_NETWORK as string | undefined) ??
+    "";
   if (network === "ic") return "https://icp0.io";
   // If we have a valid canister ID, we must be in production on ICP mainnet
   const canisterId = getBackendCanisterId();
   if (canisterId) return "https://icp0.io";
-  return null;
-}
-
-function getBackendCanisterId(): string | null {
-  const fromEnv = getEnvValue("backend_canister_id");
-  if (fromEnv) return fromEnv;
-  // Vite injects CANISTER_ID_BACKEND during production build
-  const fromVite = import.meta.env.CANISTER_ID_BACKEND as string | undefined;
-  if (fromVite && fromVite !== "undefined") return fromVite;
   return null;
 }
 
@@ -43,7 +49,9 @@ function isStorageAvailable(): boolean {
 }
 
 function getStorageGatewayUrl(): string {
-  // STORAGE_GATEWAY_URL is injected by Vite (set to https://blob.caffeine.ai in vite.config.js)
+  // vite-plugin-environment injects as process.env.* at build time
+  const fromProcess = process.env.STORAGE_GATEWAY_URL;
+  if (fromProcess && fromProcess !== "undefined") return fromProcess;
   const fromVite = import.meta.env.STORAGE_GATEWAY_URL as string | undefined;
   if (fromVite && fromVite !== "undefined") return fromVite;
   const fromEnv = getEnvValue("storage_gateway_url");

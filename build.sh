@@ -9,6 +9,15 @@ BUILD_DIR=$(mktemp -d)
 cp -rf ./src/. "$BUILD_DIR/"
 cd "$BUILD_DIR"
 
+# Safeguard: remove _initializeAccessControlWithSecret call from useActor.ts
+# This call traps on the backend and causes admin lockouts. Strip it on every build.
+USE_ACTOR_FILE="frontend/src/hooks/useActor.ts"
+if [ -f "$USE_ACTOR_FILE" ]; then
+  sed -i '/initializeAccessControlWithSecret/d' "$USE_ACTOR_FILE"
+  sed -i '/getSecretParameter/d' "$USE_ACTOR_FILE"
+  echo "Safeguard applied: removed _initializeAccessControlWithSecret from useActor.ts"
+fi
+
 ls -la
 
 if [ ! -x "$CALM_MOC_PATH" ]; then

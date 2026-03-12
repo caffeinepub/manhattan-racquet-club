@@ -21,6 +21,23 @@ if [ ! -d "$CALM_MOTOKO_CORE" ]; then
     exit 1
 fi
 
+# ─── Permanent safeguards ────────────────────────────────────────────────────
+# 1. Remove _initializeAccessControlWithSecret call from useActor.ts
+USEACTOR="frontend/src/hooks/useActor.ts"
+if [ -f "$USEACTOR" ]; then
+  sed -i '/.*_initializeAccessControlWithSecret.*/d' "$USEACTOR"
+  echo "[safeguard] _initializeAccessControlWithSecret removed from useActor.ts"
+fi
+
+# 2. Remove DEFAULT_PROJECT_ID constant and fix "nogateway" fallback in config.ts
+CONFIG="frontend/src/config.ts"
+if [ -f "$CONFIG" ]; then
+  sed -i '/.*DEFAULT_PROJECT_ID.*/d' "$CONFIG"
+  sed -i 's|process\.env\.STORAGE_GATEWAY_URL ?? "nogateway"|process.env.STORAGE_GATEWAY_URL || DEFAULT_STORAGE_GATEWAY_URL|g' "$CONFIG"
+  echo "[safeguard] DEFAULT_PROJECT_ID and nogateway removed from config.ts"
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 pnpm install --prefer-offline --child-concurrency 2 --network-concurrency 6
 pnpm --filter '@caffeine/template-frontend' build:skip-bindings
 node scripts/prune-unused-images.js

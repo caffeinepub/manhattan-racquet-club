@@ -10,33 +10,16 @@ module {
   };
 
   public type AccessControlState = {
-    var adminAssigned : Bool;
     userRoles : Map.Map<Principal, UserRole>;
   };
 
   public func initState() : AccessControlState {
     {
-      var adminAssigned = false;
       userRoles = Map.empty<Principal, UserRole>();
     };
   };
 
-  // First principal that calls this function becomes admin, all other principals become users.
-  public func initialize(state : AccessControlState, caller : Principal, adminToken : Text, userProvidedToken : Text) {
-    if (caller.isAnonymous()) { return };
-    switch (state.userRoles.get(caller)) {
-      case (?_) {};
-      case (null) {
-        if (not state.adminAssigned and userProvidedToken == adminToken) {
-          state.userRoles.add(caller, #admin);
-          state.adminAssigned := true;
-        } else {
-          state.userRoles.add(caller, #user);
-        };
-      };
-    };
-  };
-
+  // Returns #guest for unknown or anonymous principals — NEVER traps.
   public func getUserRole(state : AccessControlState, caller : Principal) : UserRole {
     if (caller.isAnonymous()) { return #guest };
     switch (state.userRoles.get(caller)) {
@@ -46,7 +29,7 @@ module {
   };
 
   public func assignRole(state : AccessControlState, caller : Principal, user : Principal, role : UserRole) {
-    if (not (isAdmin(state, caller))) {
+    if (not isAdmin(state, caller)) {
       Runtime.trap("Unauthorized: Only admins can assign user roles");
     };
     state.userRoles.add(user, role);

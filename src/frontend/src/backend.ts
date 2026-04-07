@@ -123,7 +123,7 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    _initializeAccessControlWithSecret(arg0: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignCallerUserRoleWithSuperAdminCheck(user: Principal, role: UserRole): Promise<void>;
     claimFirstAdmin(): Promise<boolean>;

@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Fonts ─────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/assets/fonts/InstrumentSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Design Tokens ─────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    --radius: 0.25rem;
+
+    /* Manhattan Racquet Club — Cream / Forest Green / Gold */
+    --background: 0.97 0.012 85; /* warm ivory */
+    --foreground: 0.18 0.02 60; /* deep warm near-black */
+
+    --card: 0.99 0.008 85;
+    --card-foreground: 0.18 0.02 60;
+
+    --popover: 0.99 0.008 85;
+    --popover-foreground: 0.18 0.02 60;
+
+    /* Forest green primary */
+    --primary: 0.32 0.08 155;
+    --primary-foreground: 0.97 0.012 85;
+
+    /* Soft cream secondary */
+    --secondary: 0.92 0.018 85;
+    --secondary-foreground: 0.25 0.04 60;
+
+    /* Warm muted */
+    --muted: 0.92 0.018 85;
+    --muted-foreground: 0.52 0.02 80;
+
+    /* Gold accent */
+    --accent: 0.74 0.12 78;
+    --accent-foreground: 0.14 0.03 60;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.018 85;
+    --input: 0.88 0.018 85;
+    --ring: 0.74 0.12 78;
+
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+
+    /* Sidebar (admin) */
+    --sidebar: 0.22 0.04 155;
+    --sidebar-foreground: 0.92 0.018 85;
+    --sidebar-primary: 0.74 0.12 78;
+    --sidebar-primary-foreground: 0.14 0.03 60;
+    --sidebar-accent: 0.28 0.05 155;
+    --sidebar-accent-foreground: 0.92 0.018 85;
+    --sidebar-border: 0.3 0.04 155;
+    --sidebar-ring: 0.74 0.12 78;
+  }
+
+  .dark {
+    --background: 0.14 0.025 155;
+    --foreground: 0.95 0.012 85;
+
+    --card: 0.18 0.03 155;
+    --card-foreground: 0.95 0.012 85;
+
+    --popover: 0.2 0.035 155;
+    --popover-foreground: 0.95 0.012 85;
+
+    --primary: 0.74 0.12 78;
+    --primary-foreground: 0.14 0.03 60;
+
+    --secondary: 0.22 0.04 155;
+    --secondary-foreground: 0.92 0.018 85;
+
+    --muted: 0.22 0.04 155;
+    --muted-foreground: 0.65 0.025 80;
+
+    --accent: 0.74 0.12 78;
+    --accent-foreground: 0.14 0.03 60;
+
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 1 0 0 / 12%;
+    --input: 1 0 0 / 15%;
+    --ring: 0.74 0.12 78;
+
+    --chart-1: 0.488 0.243 264.376;
+    --chart-2: 0.696 0.17 162.48;
+    --chart-3: 0.769 0.188 70.08;
+    --chart-4: 0.627 0.265 303.9;
+    --chart-5: 0.645 0.246 16.439;
+
+    --sidebar: 0.13 0.03 155;
+    --sidebar-foreground: 0.92 0.018 85;
+    --sidebar-primary: 0.74 0.12 78;
+    --sidebar-primary-foreground: 0.14 0.03 60;
+    --sidebar-accent: 0.2 0.04 155;
+    --sidebar-accent-foreground: 0.92 0.018 85;
+    --sidebar-border: 1 0 0 / 10%;
+    --sidebar-ring: 0.74 0.12 78;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────── */
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .court-texture {
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 39px,
+        oklch(var(--primary) / 0.06) 39px,
+        oklch(var(--primary) / 0.06) 40px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 39px,
+        oklch(var(--primary) / 0.06) 39px,
+        oklch(var(--primary) / 0.06) 40px
+      );
+  }
+
+  .gold-underline {
+    position: relative;
+  }
+  .gold-underline::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: oklch(var(--accent));
+  }
+}

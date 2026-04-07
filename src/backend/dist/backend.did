@@ -1,0 +1,80 @@
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = record {name: text;};
+type StaffMember = 
+ record {
+   bio: text;
+   displayOrder: nat;
+   id: nat;
+   name: text;
+   role: text;
+ };
+type MembershipTier = 
+ record {
+   benefits: vec text;
+   displayOrder: nat;
+   id: nat;
+   name: text;
+   price: text;
+ };
+type Announcement = 
+ record {
+   body: text;
+   createdAt: int;
+   id: nat;
+   published: bool;
+   title: text;
+ };
+type AdminEntry = 
+ record {
+   isSuperAdmin: bool;
+   "principal": principal;
+ };
+service : {
+  _initializeAccessControlWithSecret: (text) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  assignCallerUserRoleWithSuperAdminCheck: (user: principal, role:
+   UserRole) -> ();
+  claimFirstAdmin: () -> (bool);
+  createAnnouncement: (title: text, body: text) -> (nat);
+  createMembershipTier: (name: text, price: text, benefits: vec text,
+   displayOrder: nat) -> (nat);
+  createStaffMember: (name: text, role: text, bio: text, displayOrder:
+   nat) -> (nat);
+  deleteAnnouncement: (id: nat) -> ();
+  deleteMembershipTier: (id: nat) -> ();
+  deleteStaffMember: (id: nat) -> ();
+  getAllAdmins: () -> (vec AdminEntry) query;
+  getAllAnnouncements: () -> (vec Announcement) query;
+  getAllContent: () -> (vec record {
+                              text;
+                              text;
+                            }) query;
+  getAllMembershipTiers: () -> (vec MembershipTier) query;
+  getAllStaffMembers: () -> (vec StaffMember) query;
+  getAnnouncement: (id: nat) -> (Announcement) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getContentByKey: (key: text) -> (text) query;
+  getMembershipTier: (id: nat) -> (MembershipTier) query;
+  getPublishedAnnouncements: () -> (vec Announcement) query;
+  getStaffMember: (id: nat) -> (StaffMember) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  hasAnyAdmin: () -> (bool) query;
+  initDefaultContent: () -> ();
+  isCallerAdmin: () -> (bool) query;
+  isCallerSuperAdmin: () -> (bool) query;
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  setAnnouncementPublished: (id: nat, published: bool) -> ();
+  setContentByKey: (key: text, content: text) -> ();
+  setSuperAdmin: (user: principal, promote: bool) -> ();
+  updateAnnouncement: (id: nat, title: text, body: text) -> ();
+  updateMembershipTier: (id: nat, name: text, price: text, benefits:
+   vec text, displayOrder: nat) -> ();
+  updateStaffMember: (id: nat, name: text, role: text, bio: text,
+   displayOrder: nat) -> ();
+}

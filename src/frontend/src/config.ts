@@ -7,6 +7,7 @@ import {
 import { StorageClient } from "./utils/StorageClient";
 import { HttpAgent } from "@icp-sdk/core/agent";
 
+// NOTE: No DEFAULT_PROJECT_ID placeholder — we always fall back to the real canister ID.
 const DEFAULT_STORAGE_GATEWAY_URL = "https://blob.caffeine.ai";
 const DEFAULT_BUCKET_NAME = "default-bucket";
 
@@ -43,20 +44,36 @@ export async function loadConfig(): Promise<Config> {
       throw new Error("CANISTER_ID_BACKEND is not set");
     }
 
-    const resolvedCanisterId = (config.backend_canister_id === "undefined"
-      ? backendCanisterId
-      : config.backend_canister_id) as string;
+    const resolvedCanisterId = (
+      config.backend_canister_id === "undefined"
+        ? backendCanisterId
+        : config.backend_canister_id
+    ) as string;
 
-    const fullConfig = {
+    // Resolve storage gateway URL — never use "nogateway" or undefined
+    const rawGatewayUrl = process.env.STORAGE_GATEWAY_URL;
+    const storageGatewayUrl =
+      rawGatewayUrl &&
+      rawGatewayUrl !== "undefined" &&
+      rawGatewayUrl !== "nogateway"
+        ? rawGatewayUrl
+        : DEFAULT_STORAGE_GATEWAY_URL;
+
+    // Resolve project_id — always fall back to real canister ID, never a placeholder
+    const projectId =
+      config.project_id &&
+      config.project_id !== "undefined" &&
+      config.project_id !== "nogateway"
+        ? config.project_id
+        : resolvedCanisterId;
+
+    const fullConfig: Config = {
       backend_host:
         config.backend_host === "undefined" ? undefined : config.backend_host,
       backend_canister_id: resolvedCanisterId,
-      storage_gateway_url: process.env.STORAGE_GATEWAY_URL || DEFAULT_STORAGE_GATEWAY_URL,
+      storage_gateway_url: storageGatewayUrl,
       bucket_name: DEFAULT_BUCKET_NAME,
-      project_id:
-        config.project_id !== "undefined"
-          ? config.project_id
-          : resolvedCanisterId,
+      project_id: projectId,
       ii_derivation_origin:
         config.ii_derivation_origin === "undefined"
           ? undefined
@@ -69,7 +86,8 @@ export async function loadConfig(): Promise<Config> {
       console.error("CANISTER_ID_BACKEND is not set");
       throw new Error("CANISTER_ID_BACKEND is not set");
     }
-    const fallbackConfig = {
+    // Catch-block fallback: use canister ID as project_id — no placeholder UUIDs
+    const fallbackConfig: Config = {
       backend_host: undefined,
       backend_canister_id: backendCanisterId,
       storage_gateway_url: DEFAULT_STORAGE_GATEWAY_URL,

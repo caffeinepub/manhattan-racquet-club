@@ -1,4 +1,4 @@
-// Version: 3.0.0
+// Version: 1.0.0
 type Announcement__674333181 =
   {body : Text; createdAt : Int; id : Nat; published : Bool; title : Text};
 type Data__791452850<K, V> =
@@ -22,58 +22,11 @@ type Nat__490723111 = Nat__920180692;
 type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
-type OldAccessControlState__841599830 =
-  {
-    var adminAssigned : Bool;
-    userRoles : Map__605269027<Principal, UserRole__521596351>
-  };
 type StaffMember__985834694 =
   {bio : Text; displayOrder : Nat; id : Nat; name : Text; role : Text};
 type UserProfile__491224006 = {name : Text};
 type UserRole__521596351 = {#admin; #guest; #user};
-actor ({
-  in accessControlState : OldAccessControlState__841599830;
-  stable announcements :
-    {
-      var root : Node__46230540<Nat, Announcement__674333181>;
-      var size : Nat__490723111
-    };
-  stable var hasAdminAssigned : Bool;
-  stable var isInitialized : Bool;
-  stable membershipTiers :
-    {
-      var root : Node__46230540<Nat, MembershipTier__893853907>;
-      var size : Nat__490723111
-    };
-  stable var nextAnnouncementId : Nat;
-  stable var nextStaffId : Nat;
-  stable var nextTierId : Nat;
-  stable siteContent :
-    {var root : Node__46230540<Text, Text>; var size : Nat__490723111};
-  stable var stableAnnouncementsArr : [(Nat, Announcement__674333181)];
-  stable var stableIsInitialized : Bool;
-  stable var stableMembershipTiersArr : [(Nat, MembershipTier__893853907)];
-  stable var stableNextAnnouncementId : Nat;
-  stable var stableNextStaffId : Nat;
-  stable var stableNextTierId : Nat;
-  stable var stableSiteContent : [(Text, Text)];
-  stable var stableStaffMembersArr : [(Nat, StaffMember__985834694)];
-  stable var stableSuperAdmins : [(Principal, Bool)];
-  stable var stableUserProfilesArr : [(Principal, UserProfile__491224006)];
-  stable var stableUserRoles : [(Principal, UserRole__521596351)];
-  stable staffMembers :
-    {
-      var root : Node__46230540<Nat, StaffMember__985834694>;
-      var size : Nat__490723111
-    };
-  stable superAdmins :
-    {var root : Node__46230540<Principal, Bool>; var size : Nat__490723111};
-  stable userProfiles :
-    {
-      var root : Node__46230540<Principal, UserProfile__491224006>;
-      var size : Nat__490723111
-    }
-}, {
+actor {
   stable accessControlState :
     {userRoles : Map__605269027<Principal, UserRole__521596351>};
   stable announcements :
@@ -116,4 +69,4 @@ actor ({
       var root : Node__46230540<Principal, UserProfile__491224006>;
       var size : Nat__490723111
     }
-}) ;
+};

@@ -43,16 +43,27 @@ export function useStorageClient(): StorageClientHook {
     loadConfig()
       .then((cfg) => {
         if (!cfg.backend_canister_id) return;
+
+        // Resolve storage gateway URL — never fall back to "nogateway"
+        const rawGateway = cfg.storage_gateway_url;
+        const storageGatewayUrl =
+          rawGateway && rawGateway !== "undefined" && rawGateway !== "nogateway"
+            ? rawGateway
+            : DEFAULT_STORAGE_GATEWAY_URL;
+
+        // Resolve project_id — always use canister ID as fallback, never a placeholder
+        const projectId =
+          cfg.project_id &&
+          cfg.project_id !== "undefined" &&
+          cfg.project_id !== "nogateway"
+            ? cfg.project_id
+            : cfg.backend_canister_id;
+
         setResolvedConfig({
           backendCanisterId: cfg.backend_canister_id,
           host: cfg.backend_host ?? "https://icp0.io",
-          storageGatewayUrl:
-            cfg.storage_gateway_url &&
-            cfg.storage_gateway_url !== "undefined" &&
-            cfg.storage_gateway_url !== "nogateway"
-              ? cfg.storage_gateway_url
-              : DEFAULT_STORAGE_GATEWAY_URL,
-          projectId: cfg.project_id ?? cfg.backend_canister_id,
+          storageGatewayUrl,
+          projectId,
           bucketName: cfg.bucket_name,
         });
       })
@@ -75,6 +86,8 @@ export function useStorageClient(): StorageClientHook {
     async function createClient(withIdentity: boolean): Promise<StorageClient> {
       const agentOptions = withIdentity && identity ? { identity } : {};
       const agent = await HttpAgent.create({ host, ...agentOptions });
+      // Uses @caffeineai/object-storage StorageClient which calls
+      // _immutableObjectStorageCreateCertificate (the correct method name)
       return new StorageClient(
         bucketName,
         storageGatewayUrl,

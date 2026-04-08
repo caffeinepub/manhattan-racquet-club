@@ -14,6 +14,10 @@ export interface StaffMember {
     name: string;
     role: string;
 }
+export interface AdminEntry {
+    principal: Principal;
+    isSuperAdmin: boolean;
+}
 export interface Announcement {
     id: bigint;
     title: string;
@@ -30,10 +34,6 @@ export interface MembershipTier {
 }
 export interface UserProfile {
     name: string;
-}
-export interface AdminEntry {
-    principal: Principal;
-    isSuperAdmin: boolean;
 }
 export enum UserRole {
     admin = "admin",

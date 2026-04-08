@@ -31,6 +31,19 @@ for CONFIG in \
     echo "[safeguard] DEFAULT_PROJECT_ID and nogateway fallback patched in $CONFIG"
   fi
 done
+
+# 3. Fix StorageClient certificate method name.
+#    The correct method is _immutableObjectStorageCreateCertificate.
+#    The old name _caffeineStorageCreateCertificate causes 403 "Invalid payload" errors
+#    because the backend canister doesn't recognise it and returns a bad certificate.
+for STORAGECLIENT in \
+  "src/frontend/src/utils/StorageClient.ts" \
+  "src/frontend/src/lib/StorageClient.ts"; do
+  if [ -f "$STORAGECLIENT" ]; then
+    sed -i 's|_caffeineStorageCreateCertificate|_immutableObjectStorageCreateCertificate|g' "$STORAGECLIENT"
+    echo "[safeguard] Certificate method name fixed in $STORAGECLIENT"
+  fi
+done
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Install backend dependencies and build

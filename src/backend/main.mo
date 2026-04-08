@@ -10,13 +10,15 @@ import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
+import MixinObjectStorage "object-storage/Mixin";
 
-(with migration = Migration.run)
+
+
 actor {
   // Authorization system state
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+  include MixinObjectStorage();
 
   // Two-tier admin state
   stable var hasAdminAssigned = false;

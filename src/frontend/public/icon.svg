@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Dark background -->
+  <rect width="192" height="192" rx="24" fill="#1a1a2e"/>
+  <!-- Gold accent circle (tennis ball ring) -->
+  <circle cx="96" cy="96" r="68" fill="none" stroke="#c9a84c" stroke-width="5"/>
+  <!-- Racquet strings (horizontal) -->
+  <line x1="40" y1="96" x2="152" y2="96" stroke="#c9a84c" stroke-width="2" opacity="0.4"/>
+  <line x1="46" y1="76" x2="146" y2="76" stroke="#c9a84c" stroke-width="1.5" opacity="0.3"/>
+  <line x1="46" y1="116" x2="146" y2="116" stroke="#c9a84c" stroke-width="1.5" opacity="0.3"/>
+  <!-- Racquet strings (vertical) -->
+  <line x1="96" y1="28" x2="96" y2="164" stroke="#c9a84c" stroke-width="2" opacity="0.4"/>
+  <line x1="76" y1="33" x2="76" y2="159" stroke="#c9a84c" stroke-width="1.5" opacity="0.3"/>
+  <line x1="116" y1="33" x2="116" y2="159" stroke="#c9a84c" stroke-width="1.5" opacity="0.3"/>
+  <!-- MRC Text -->
+  <text x="96" y="104" font-family="Georgia, serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle" letter-spacing="3">MRC</text>
+</svg>

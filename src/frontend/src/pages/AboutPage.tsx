@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "motion/react";
+import { Helmet } from "react-helmet-async";
 import { useImageUrl } from "../hooks/useImageUrl";
 import { useAllStaffMembers, useContentByKey } from "../hooks/useQueries";
 
@@ -57,12 +58,36 @@ export default function AboutPage() {
     "/assets/generated/hero-about.dim_1400x600.jpg",
   );
 
+  const seoTitle = useContentByKey("page_seo_title_about");
+  const seoDesc = useContentByKey("page_seo_desc_about");
+
   const sortedStaff = [...(staff ?? [])].sort(
     (a, b) => Number(a.displayOrder) - Number(b.displayOrder),
   );
 
   return (
     <div className="overflow-x-hidden">
+      <Helmet>
+        <title>{seoTitle.data || "About | Manhattan Racquet Club"}</title>
+        <meta
+          name="description"
+          content={
+            seoDesc.data ||
+            "Learn about the Manhattan Racquet Club's century of history, our mission, and the coaching staff that make MRC the finest tennis club in New York City."
+          }
+        />
+        <meta
+          property="og:title"
+          content={seoTitle.data || "About | Manhattan Racquet Club"}
+        />
+        <meta
+          property="og:description"
+          content={
+            seoDesc.data ||
+            "Learn about the Manhattan Racquet Club's century of history, our mission, and the coaching staff that make MRC the finest tennis club in New York City."
+          }
+        />
+      </Helmet>
       {/* ─── Hero Banner ───────────────────────────────────────── */}
       <section
         className="relative py-24 overflow-hidden"

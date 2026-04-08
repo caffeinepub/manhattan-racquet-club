@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ImageIcon, Loader2, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { ImageIcon, Loader2, Save, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAllContent, useSetContent } from "../../hooks/useQueries";
 import { useStorageClient } from "../../hooks/useStorageClient";
@@ -67,9 +68,86 @@ const IMAGE_SLOTS: ImageSlot[] = [
   },
 ];
 
+// Derive the alt text content key from an image slot key.
+// e.g. "img_landing_hero" → "img_alt_landing_hero"
+function altKeyFor(slotKey: string): string {
+  return slotKey.replace(/^img_/, "img_alt_");
+}
+
+interface AltTextFieldProps {
+  slotKey: string;
+  initialValue: string;
+}
+
+function AltTextField({ slotKey, initialValue }: AltTextFieldProps) {
+  const [value, setValue] = useState(initialValue);
+  const [isDirty, setIsDirty] = useState(false);
+  const setContent = useSetContent();
+  const altKey = altKeyFor(slotKey);
+
+  useEffect(() => {
+    setValue(initialValue);
+    setIsDirty(false);
+  }, [initialValue]);
+
+  function handleChange(val: string) {
+    setValue(val);
+    setIsDirty(val !== initialValue);
+  }
+
+  async function handleSave() {
+    try {
+      await setContent.mutateAsync({ key: altKey, value });
+      setIsDirty(false);
+      toast.success("Alt text saved");
+    } catch {
+      toast.error("Failed to save alt text");
+    }
+  }
+
+  const inputId = `alt-${slotKey}`;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border/60">
+      <label
+        htmlFor={inputId}
+        className="font-sans text-xs font-medium text-muted-foreground block mb-1.5"
+      >
+        Alt text
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id={inputId}
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder="Describe the image for accessibility…"
+          className="font-sans text-xs h-8 flex-1"
+          data-ocid={`admin.images.${slotKey}.alt_input`}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!isDirty || setContent.isPending}
+          onClick={handleSave}
+          className="h-8 px-2.5 font-sans text-xs font-medium shrink-0"
+          data-ocid={`admin.images.${slotKey}.alt_save_button`}
+          title="Save alt text"
+        >
+          {setContent.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Save className="h-3 w-3" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 interface ImageCardProps {
   slot: ImageSlot;
   currentHash: string;
+  altValue: string;
   storageAvailable: boolean;
   onUpload: (key: string, file: File) => Promise<void>;
   isUploading: boolean;
@@ -79,6 +157,7 @@ interface ImageCardProps {
 function ImageCard({
   slot,
   currentHash,
+  altValue,
   storageAvailable,
   onUpload,
   isUploading,
@@ -88,14 +167,11 @@ function ImageCard({
   const isStaff = slot.key.startsWith("img_staff_photo");
 
   const hasUploadedImage = isValidHash(currentHash);
-  // We show the default image always (not attempting to resolve blob URL in the card preview)
-  // since useImageUrl can't be used per-card in a loop. We'll show a "uploaded" badge if hash exists.
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     void onUpload(slot.key, file);
-    // Reset input so the same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -156,7 +232,7 @@ function ImageCard({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg"
           className="hidden"
           onChange={handleFileChange}
           data-ocid={`admin.images.${slot.key}.upload_button`}
@@ -195,6 +271,9 @@ function ImageCard({
             Available in deployed version
           </p>
         )}
+
+        {/* Alt text input — always visible below upload */}
+        <AltTextField slotKey={slot.key} initialValue={altValue} />
       </div>
     </div>
   );
@@ -205,7 +284,6 @@ export default function AdminImagesTab() {
   const setContent = useSetContent();
   const storageClient = useStorageClient();
 
-  // Per-slot upload state
   const [uploadingKeys, setUploadingKeys] = useState<Set<string>>(new Set());
   const [progressMap, setProgressMap] = useState<Map<string, number>>(
     new Map(),
@@ -268,16 +346,16 @@ export default function AdminImagesTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {IMAGE_SLOTS.map((slot, i) => (
+          {IMAGE_SLOTS.map((slot) => (
             <ImageCard
               key={slot.key}
               slot={slot}
               currentHash={contentMap.get(slot.key) ?? ""}
+              altValue={contentMap.get(altKeyFor(slot.key)) ?? ""}
               storageAvailable={storageClient.available}
               onUpload={handleUpload}
               isUploading={uploadingKeys.has(slot.key)}
               uploadProgress={progressMap.get(slot.key) ?? 0}
-              data-ocid={`admin.images.item.${i + 1}`}
             />
           ))}
         </div>

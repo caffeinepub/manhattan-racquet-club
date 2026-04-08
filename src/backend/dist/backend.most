@@ -1,8 +1,48 @@
 // Version: 1.0.0
+type ActivityLogEntry__375706252 =
+  {
+    action : Text;
+    adminName : Text;
+    details : Text;
+    id : Text;
+    principalText : Text;
+    timestamp : Int
+  };
 type Announcement__674333181 =
   {body : Text; createdAt : Int; id : Nat; published : Bool; title : Text};
+type Booking__519012722 =
+  {
+    courtType : Text;
+    createdAt : Int;
+    date : Text;
+    email : Text;
+    id : Text;
+    name : Text;
+    notes : Text;
+    status : Text;
+    timeSlot : Text
+  };
 type Data__791452850<K, V> =
   {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Enquiry__415520819 =
+  {
+    createdAt : Int;
+    email : Text;
+    id : Text;
+    message : Text;
+    name : Text;
+    phone : Text;
+    status : Text;
+    tierId : Text
+  };
+type GalleryImage__462113870 =
+  {
+    altText : Text;
+    createdAt : Int;
+    displayOrder : Nat;
+    id : Text;
+    storageKey : Text
+  };
 type Internal__8484328<K, V> =
   {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
 type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
@@ -29,9 +69,29 @@ type UserRole__521596351 = {#admin; #guest; #user};
 actor {
   stable accessControlState :
     {userRoles : Map__605269027<Principal, UserRole__521596351>};
+  stable activityLog :
+    {
+      var root : Node__46230540<Text, ActivityLogEntry__375706252>;
+      var size : Nat__490723111
+    };
   stable announcements :
     {
       var root : Node__46230540<Nat, Announcement__674333181>;
+      var size : Nat__490723111
+    };
+  stable bookings :
+    {
+      var root : Node__46230540<Text, Booking__519012722>;
+      var size : Nat__490723111
+    };
+  stable enquiries :
+    {
+      var root : Node__46230540<Text, Enquiry__415520819>;
+      var size : Nat__490723111
+    };
+  stable galleryImages :
+    {
+      var root : Node__46230540<Text, GalleryImage__462113870>;
       var size : Nat__490723111
     };
   stable var hasAdminAssigned : Bool;
@@ -41,15 +101,27 @@ actor {
       var root : Node__46230540<Nat, MembershipTier__893853907>;
       var size : Nat__490723111
     };
+  stable var nextActivitySeq : Nat;
   stable var nextAnnouncementId : Nat;
+  stable var nextBookingSeq : Nat;
+  stable var nextEnquirySeq : Nat;
+  stable var nextGallerySeq : Nat;
   stable var nextStaffId : Nat;
   stable var nextTierId : Nat;
   stable siteContent :
     {var root : Node__46230540<Text, Text>; var size : Nat__490723111};
+  stable var stableActivityLogArr : [(Text, ActivityLogEntry__375706252)];
   stable var stableAnnouncementsArr : [(Nat, Announcement__674333181)];
+  stable var stableBookingsArr : [(Text, Booking__519012722)];
+  stable var stableEnquiriesArr : [(Text, Enquiry__415520819)];
+  stable var stableGalleryImagesArr : [(Text, GalleryImage__462113870)];
   stable var stableIsInitialized : Bool;
   stable var stableMembershipTiersArr : [(Nat, MembershipTier__893853907)];
+  stable var stableNextActivitySeq : Nat;
   stable var stableNextAnnouncementId : Nat;
+  stable var stableNextBookingSeq : Nat;
+  stable var stableNextEnquirySeq : Nat;
+  stable var stableNextGallerySeq : Nat;
   stable var stableNextStaffId : Nat;
   stable var stableNextTierId : Nat;
   stable var stableSiteContent : [(Text, Text)];

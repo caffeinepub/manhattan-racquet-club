@@ -52,3 +52,35 @@ mops install
 mops build
 
 cd ../..
+
+# ─── Regression smoke test ───────────────────────────────────────────────────
+# Verify that all permanent safeguards are in place after the build.
+SMOKE_PASS=true
+
+USEACTOR_SRC="src/frontend/src/hooks/useActor.ts"
+if [ -f "$USEACTOR_SRC" ]; then
+  if grep -q "_initializeAccessControlWithSecret" "$USEACTOR_SRC"; then
+    echo "[smoke test] ERROR: '_initializeAccessControlWithSecret' still present in $USEACTOR_SRC"
+    SMOKE_PASS=false
+  fi
+fi
+
+CONFIG_SRC="src/frontend/src/config.ts"
+if [ -f "$CONFIG_SRC" ]; then
+  if grep -q "DEFAULT_PROJECT_ID" "$CONFIG_SRC"; then
+    echo "[smoke test] ERROR: 'DEFAULT_PROJECT_ID' still present in $CONFIG_SRC"
+    SMOKE_PASS=false
+  fi
+  if grep -q "nogateway" "$CONFIG_SRC"; then
+    echo "[smoke test] ERROR: 'nogateway' still present in $CONFIG_SRC"
+    SMOKE_PASS=false
+  fi
+fi
+
+if [ "$SMOKE_PASS" = false ]; then
+  echo "[smoke test] FAILED — one or more safeguards are missing. Aborting."
+  exit 1
+fi
+
+echo -e "\033[0;32mRegression checks passed — all safeguards are in place.\033[0m"
+# ─────────────────────────────────────────────────────────────────────────────

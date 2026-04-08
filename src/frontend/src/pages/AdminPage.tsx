@@ -40,9 +40,13 @@ import { createActorWithConfig } from "../config";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
+import AdminActivityLogTab from "./admin/AdminActivityLogTab";
 import AdminAdminsTab from "./admin/AdminAdminsTab";
 import AdminAnnouncementsTab from "./admin/AdminAnnouncementsTab";
+import AdminBookingsTab from "./admin/AdminBookingsTab";
 import AdminContentTab from "./admin/AdminContentTab";
+import AdminEnquiriesTab from "./admin/AdminEnquiriesTab";
+import AdminGalleryTab from "./admin/AdminGalleryTab";
 import AdminImagesTab from "./admin/AdminImagesTab";
 import AdminStaffTab from "./admin/AdminStaffTab";
 import AdminTiersTab from "./admin/AdminTiersTab";
@@ -288,6 +292,34 @@ function Dashboard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               >
                 Admins
               </TabsTrigger>
+              <TabsTrigger
+                value="enquiries"
+                className="font-sans text-sm"
+                data-ocid="admin.enquiries.tab"
+              >
+                Enquiries
+              </TabsTrigger>
+              <TabsTrigger
+                value="bookings"
+                className="font-sans text-sm"
+                data-ocid="admin.bookings.tab"
+              >
+                Bookings
+              </TabsTrigger>
+              <TabsTrigger
+                value="gallery"
+                className="font-sans text-sm"
+                data-ocid="admin.gallery.tab"
+              >
+                Gallery
+              </TabsTrigger>
+              <TabsTrigger
+                value="activity"
+                className="font-sans text-sm"
+                data-ocid="admin.activity.tab"
+              >
+                Activity
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="content">
@@ -307,6 +339,18 @@ function Dashboard({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             </TabsContent>
             <TabsContent value="admins">
               <AdminAdminsTab isSuperAdmin={isSuperAdmin} />
+            </TabsContent>
+            <TabsContent value="enquiries">
+              <AdminEnquiriesTab />
+            </TabsContent>
+            <TabsContent value="bookings">
+              <AdminBookingsTab />
+            </TabsContent>
+            <TabsContent value="gallery">
+              <AdminGalleryTab />
+            </TabsContent>
+            <TabsContent value="activity">
+              <AdminActivityLogTab />
             </TabsContent>
           </Tabs>
         </motion.div>

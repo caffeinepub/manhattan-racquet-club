@@ -105,6 +105,94 @@ actor {
   stable var stableIsInitialized = false;
   var isInitialized = false;
 
+  // ========== Enquiries ==========
+  public type Enquiry = {
+    id : Text;
+    name : Text;
+    email : Text;
+    phone : Text;
+    tierId : Text;
+    message : Text;
+    createdAt : Int;
+    status : Text;
+  };
+
+  module Enquiry {
+    public func compare(a : Enquiry, b : Enquiry) : Order.Order {
+      Int.compare(b.createdAt, a.createdAt);
+    };
+  };
+
+  let enquiries = Map.empty<Text, Enquiry>();
+  stable var stableEnquiriesArr : [(Text, Enquiry)] = [];
+  stable var stableNextEnquirySeq = 0;
+  var nextEnquirySeq = 0;
+
+  // ========== Bookings ==========
+  public type Booking = {
+    id : Text;
+    name : Text;
+    email : Text;
+    date : Text;
+    timeSlot : Text;
+    courtType : Text;
+    notes : Text;
+    createdAt : Int;
+    status : Text;
+  };
+
+  module Booking {
+    public func compare(a : Booking, b : Booking) : Order.Order {
+      Int.compare(b.createdAt, a.createdAt);
+    };
+  };
+
+  let bookings = Map.empty<Text, Booking>();
+  stable var stableBookingsArr : [(Text, Booking)] = [];
+  stable var stableNextBookingSeq = 0;
+  var nextBookingSeq = 0;
+
+  // ========== Activity Log ==========
+  public type ActivityLogEntry = {
+    id : Text;
+    principalText : Text;
+    adminName : Text;
+    action : Text;
+    details : Text;
+    timestamp : Int;
+  };
+
+  module ActivityLogEntry {
+    public func compare(a : ActivityLogEntry, b : ActivityLogEntry) : Order.Order {
+      Int.compare(b.timestamp, a.timestamp);
+    };
+  };
+
+  let activityLog = Map.empty<Text, ActivityLogEntry>();
+  stable var stableActivityLogArr : [(Text, ActivityLogEntry)] = [];
+  stable var stableNextActivitySeq = 0;
+  var nextActivitySeq = 0;
+
+  // ========== Gallery Images ==========
+  public type GalleryImage = {
+    id : Text;
+    storageKey : Text;
+    altText : Text;
+    displayOrder : Nat;
+    createdAt : Int;
+  };
+
+  module GalleryImage {
+    public func compare(a : GalleryImage, b : GalleryImage) : Order.Order {
+      Nat.compare(a.displayOrder, b.displayOrder);
+    };
+  };
+
+  let galleryImages = Map.empty<Text, GalleryImage>();
+  stable var stableGalleryImagesArr : [(Text, GalleryImage)] = [];
+  stable var stableNextGallerySeq = 0;
+  var nextGallerySeq = 0;
+
   // ========== Helper function to check if caller is superadmin ==========
   func isCallerSuperAdminInternal(caller : Principal) : Bool {
     switch (accessControlState.userRoles.get(caller)) {
@@ -121,6 +209,31 @@ actor {
     false;
   };
 
+  // ========== Helper: generate a simple ID from timestamp + sequence ==========
+  func makeId(prefix : Text, seq : Nat) : Text {
+    prefix # "-" # Time.now().toText() # "-" # seq.toText();
+  };
+
+  // ========== Helper: log an activity entry ==========
+  func logActivity(caller : Principal, action : Text, details : Text) {
+    let adminName = switch (userProfiles.get(caller)) {
+      case (?p) { p.name };
+      case null { caller.toText() };
+    };
+    let seq = nextActivitySeq;
+    nextActivitySeq += 1;
+    let id = makeId("act", seq);
+    let entry : ActivityLogEntry = {
+      id;
+      principalText = caller.toText();
+      adminName;
+      action;
+      details;
+      timestamp = Time.now();
+    };
+    activityLog.add(id, entry);
+  };
+
   // ========== Upgrade hooks ==========
   system func preupgrade() {
     stableSuperAdmins := superAdmins.toArray();
@@ -134,6 +247,14 @@ actor {
     stableNextStaffId := nextStaffId;
     stableNextAnnouncementId := nextAnnouncementId;
     stableIsInitialized := isInitialized;
+    stableEnquiriesArr := enquiries.toArray();
+    stableNextEnquirySeq := nextEnquirySeq;
+    stableBookingsArr := bookings.toArray();
+    stableNextBookingSeq := nextBookingSeq;
+    stableActivityLogArr := activityLog.toArray();
+    stableNextActivitySeq := nextActivitySeq;
+    stableGalleryImagesArr := galleryImages.toArray();
+    stableNextGallerySeq := nextGallerySeq;
   };
 
   system func postupgrade() {
@@ -148,6 +269,14 @@ actor {
     nextStaffId := stableNextStaffId;
     nextAnnouncementId := stableNextAnnouncementId;
     isInitialized := stableIsInitialized;
+    for ((k, v) in stableEnquiriesArr.vals()) { enquiries.add(k, v) };
+    nextEnquirySeq := stableNextEnquirySeq;
+    for ((k, v) in stableBookingsArr.vals()) { bookings.add(k, v) };
+    nextBookingSeq := stableNextBookingSeq;
+    for ((k, v) in stableActivityLogArr.vals()) { activityLog.add(k, v) };
+    nextActivitySeq := stableNextActivitySeq;
+    for ((k, v) in stableGalleryImagesArr.vals()) { galleryImages.add(k, v) };
+    nextGallerySeq := stableNextGallerySeq;
 
     // Migration guard: if no superadmins were persisted, promote all existing admins
     if (superAdmins.size() == 0) {
@@ -303,6 +432,7 @@ actor {
       Runtime.trap("Unauthorized: Only admins can perform this action");
     };
     siteContent.add(key, content);
+    logActivity(caller, "setContentByKey", "key=" # key);
   };
 
   public query func getAllContent() : async [(Text, Text)] {
@@ -327,6 +457,7 @@ actor {
     };
     let tier : MembershipTier = { id = nextTierId; name; price; benefits; displayOrder };
     membershipTiers.add(nextTierId, tier); nextTierId += 1;
+    logActivity(caller, "createMembershipTier", "name=" # name);
     tier.id;
   };
 
@@ -336,7 +467,10 @@ actor {
     };
     switch (membershipTiers.get(id)) {
       case (null) { Runtime.trap("Tier not found") };
-      case (?_) { membershipTiers.add(id, { id; name; price; benefits; displayOrder }) };
+      case (?_) {
+        membershipTiers.add(id, { id; name; price; benefits; displayOrder });
+        logActivity(caller, "updateMembershipTier", "id=" # id.toText());
+      };
     };
   };
 
@@ -346,6 +480,7 @@ actor {
     };
     if (not membershipTiers.containsKey(id)) { Runtime.trap("Tier not found") };
     membershipTiers.remove(id);
+    logActivity(caller, "deleteMembershipTier", "id=" # id.toText());
   };
 
   // ========== Staff Members ==========
@@ -366,6 +501,7 @@ actor {
     };
     let staff : StaffMember = { id = nextStaffId; name; role; bio; displayOrder };
     staffMembers.add(nextStaffId, staff); nextStaffId += 1;
+    logActivity(caller, "createStaffMember", "name=" # name);
     staff.id;
   };
 
@@ -375,7 +511,10 @@ actor {
     };
     switch (staffMembers.get(id)) {
       case (null) { Runtime.trap("Staff member not found") };
-      case (?_) { staffMembers.add(id, { id; name; role; bio; displayOrder }) };
+      case (?_) {
+        staffMembers.add(id, { id; name; role; bio; displayOrder });
+        logActivity(caller, "updateStaffMember", "id=" # id.toText());
+      };
     };
   };
 
@@ -385,6 +524,7 @@ actor {
     };
     if (not staffMembers.containsKey(id)) { Runtime.trap("Staff member not found") };
     staffMembers.remove(id);
+    logActivity(caller, "deleteStaffMember", "id=" # id.toText());
   };
 
   // ========== Announcements ==========
@@ -412,6 +552,7 @@ actor {
     };
     let announcement : Announcement = { id = nextAnnouncementId; title; body; createdAt = Time.now(); published = false };
     announcements.add(nextAnnouncementId, announcement); nextAnnouncementId += 1;
+    logActivity(caller, "createAnnouncement", "title=" # title);
     announcement.id;
   };
 
@@ -423,6 +564,7 @@ actor {
       case (null) { Runtime.trap("Announcement not found") };
       case (?existing) {
         announcements.add(id, { id; title; body; createdAt = existing.createdAt; published = existing.published });
+        logActivity(caller, "updateAnnouncement", "id=" # id.toText());
       };
     };
   };
@@ -435,6 +577,7 @@ actor {
       case (null) { Runtime.trap("Announcement not found") };
       case (?existing) {
         announcements.add(id, { id; title = existing.title; body = existing.body; createdAt = existing.createdAt; published });
+        logActivity(caller, "setAnnouncementPublished", "id=" # id.toText() # " published=" # (if published "true" else "false"));
       };
     };
   };
@@ -445,5 +588,142 @@ actor {
     };
     if (not announcements.containsKey(id)) { Runtime.trap("Announcement not found") };
     announcements.remove(id);
+    logActivity(caller, "deleteAnnouncement", "id=" # id.toText());
+  };
+
+  // ========== Enquiries ==========
+  public shared func submitEnquiry(name : Text, email : Text, phone : Text, tierId : Text, message : Text) : async { #ok : Text; #err : Text } {
+    let seq = nextEnquirySeq;
+    nextEnquirySeq += 1;
+    let id = makeId("enq", seq);
+    let enquiry : Enquiry = { id; name; email; phone; tierId; message; createdAt = Time.now(); status = "pending" };
+    enquiries.add(id, enquiry);
+    #ok id;
+  };
+
+  public query ({ caller }) func getAllEnquiries() : async [Enquiry] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view enquiries");
+    };
+    enquiries.values().toArray().sort();
+  };
+
+  public shared ({ caller }) func updateEnquiryStatus(id : Text, status : Text) : async { #ok : Text; #err : Text } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return #err "Unauthorized: Only admins can update enquiry status";
+    };
+    if (status != "pending" and status != "contacted" and status != "resolved" and status != "archived") {
+      return #err "Invalid status. Must be one of: pending, contacted, resolved, archived";
+    };
+    switch (enquiries.get(id)) {
+      case (null) { #err "Enquiry not found" };
+      case (?existing) {
+        enquiries.add(id, { existing with status });
+        #ok id;
+      };
+    };
+  };
+
+  // ========== Bookings ==========
+  public shared func submitBooking(name : Text, email : Text, date : Text, timeSlot : Text, courtType : Text, notes : Text) : async { #ok : Text; #err : Text } {
+    let seq = nextBookingSeq;
+    nextBookingSeq += 1;
+    let id = makeId("bkg", seq);
+    let booking : Booking = { id; name; email; date; timeSlot; courtType; notes; createdAt = Time.now(); status = "pending" };
+    bookings.add(id, booking);
+    #ok id;
+  };
+
+  public query ({ caller }) func getAllBookings() : async [Booking] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view bookings");
+    };
+    bookings.values().toArray().sort();
+  };
+
+  public shared ({ caller }) func updateBookingStatus(id : Text, status : Text) : async { #ok : Text; #err : Text } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return #err "Unauthorized: Only admins can update booking status";
+    };
+    if (status != "pending" and status != "confirmed" and status != "cancelled") {
+      return #err "Invalid status. Must be one of: pending, confirmed, cancelled";
+    };
+    switch (bookings.get(id)) {
+      case (null) { #err "Booking not found" };
+      case (?existing) {
+        bookings.add(id, { existing with status });
+        #ok id;
+      };
+    };
+  };
+
+  // ========== Activity Log ==========
+  public query ({ caller }) func getActivityLog(limit : Nat) : async [ActivityLogEntry] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view the activity log");
+    };
+    let all = activityLog.values().toArray().sort();
+    if (limit == 0 or limit >= all.size()) { all }
+    else { all.sliceToArray(0, limit) };
+  };
+
+  // ========== Gallery Images ==========
+  public shared ({ caller }) func addGalleryImage(storageKey : Text, altText : Text, displayOrder : Nat) : async { #ok : Text; #err : Text } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return #err "Unauthorized: Only admins can add gallery images";
+    };
+    let seq = nextGallerySeq;
+    nextGallerySeq += 1;
+    let id = makeId("img", seq);
+    let image : GalleryImage = { id; storageKey; altText; displayOrder; createdAt = Time.now() };
+    galleryImages.add(id, image);
+    #ok id;
+  };
+
+  public shared ({ caller }) func updateGalleryImage(id : Text, altText : Text, displayOrder : Nat) : async { #ok : Text; #err : Text } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return #err "Unauthorized: Only admins can update gallery images";
+    };
+    switch (galleryImages.get(id)) {
+      case (null) { #err "Image not found" };
+      case (?existing) {
+        galleryImages.add(id, { existing with altText; displayOrder });
+        #ok id;
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteGalleryImage(id : Text) : async { #ok : Text; #err : Text } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return #err "Unauthorized: Only admins can delete gallery images";
+    };
+    switch (galleryImages.get(id)) {
+      case (null) { #err "Image not found" };
+      case (?_) {
+        galleryImages.remove(id);
+        #ok id;
+      };
+    };
+  };
+
+  public query func getAllGalleryImages() : async [GalleryImage] {
+    galleryImages.values().toArray().sort();
+  };
+
+  public shared ({ caller }) func reorderGalleryImages(ids : [Text]) : async { #ok : Text; #err : Text } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return #err "Unauthorized: Only admins can reorder gallery images";
+    };
+    var idx = 0;
+    for (id in ids.vals()) {
+      switch (galleryImages.get(id)) {
+        case (?existing) {
+          galleryImages.add(id, { existing with displayOrder = idx });
+        };
+        case (null) {};
+      };
+      idx += 1;
+    };
+    #ok "reordered";
   };
 };

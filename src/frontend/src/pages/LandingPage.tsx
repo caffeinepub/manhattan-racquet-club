@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Award, Dumbbell, Users } from "lucide-react";
 import { motion } from "motion/react";
+import { Helmet } from "react-helmet-async";
 import { useImageUrl } from "../hooks/useImageUrl";
 import {
   useContentByKey,
@@ -54,8 +55,32 @@ export default function LandingPage() {
     "/assets/generated/hero-landing.dim_1600x700.jpg",
   );
 
+  const seoTitle = useContentByKey("page_seo_title_landing");
+  const seoDesc = useContentByKey("page_seo_desc_landing");
+
   return (
     <div className="overflow-x-hidden">
+      <Helmet>
+        <title>{seoTitle.data || "Home | Manhattan Racquet Club"}</title>
+        <meta
+          name="description"
+          content={
+            seoDesc.data ||
+            "Welcome to the Manhattan Racquet Club — NYC's premier tennis destination since 1923. World-class courts, expert coaching, and an unmatched community."
+          }
+        />
+        <meta
+          property="og:title"
+          content={seoTitle.data || "Home | Manhattan Racquet Club"}
+        />
+        <meta
+          property="og:description"
+          content={
+            seoDesc.data ||
+            "Welcome to the Manhattan Racquet Club — NYC's premier tennis destination since 1923. World-class courts, expert coaching, and an unmatched community."
+          }
+        />
+      </Helmet>
       {/* ─── Hero ──────────────────────────────────────────────── */}
       <section
         className="relative min-h-[92vh] flex items-end pb-24 overflow-hidden"

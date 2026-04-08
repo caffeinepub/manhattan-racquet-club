@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 
 const appVersion: string =
   (import.meta.env.VITE_APP_VERSION as string | undefined) ||
@@ -22,6 +23,19 @@ export default function PublicLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* ─── Default SEO ───────────────────────────────────────────── */}
+      <Helmet>
+        <title>Manhattan Racquet Club</title>
+        <meta
+          name="description"
+          content="NYC's premier racquet club since 1923. World-class tennis courts, expert coaching, and a vibrant community in the heart of Manhattan."
+        />
+        <meta property="og:title" content="Manhattan Racquet Club" />
+        <meta
+          property="og:description"
+          content="NYC's premier racquet club since 1923. World-class tennis courts, expert coaching, and a vibrant community in the heart of Manhattan."
+        />
+      </Helmet>
       {/* ─── Header / Nav ─────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">

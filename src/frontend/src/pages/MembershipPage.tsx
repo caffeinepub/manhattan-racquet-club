@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check } from "lucide-react";
 import { motion } from "motion/react";
+import { Helmet } from "react-helmet-async";
 import { useImageUrl } from "../hooks/useImageUrl";
 import { useAllMembershipTiers, useContentByKey } from "../hooks/useQueries";
 
@@ -26,6 +27,9 @@ export default function MembershipPage() {
     "/assets/generated/hero-membership.dim_1400x600.jpg",
   );
 
+  const seoTitle = useContentByKey("page_seo_title_membership");
+  const seoDesc = useContentByKey("page_seo_desc_membership");
+
   const sortedTiers = [...(tiers ?? [])].sort(
     (a, b) => Number(a.displayOrder) - Number(b.displayOrder),
   );
@@ -35,6 +39,27 @@ export default function MembershipPage() {
 
   return (
     <div className="overflow-x-hidden">
+      <Helmet>
+        <title>{seoTitle.data || "Membership | Manhattan Racquet Club"}</title>
+        <meta
+          name="description"
+          content={
+            seoDesc.data ||
+            "Explore membership options at the Manhattan Racquet Club. Junior, Adult, and Family plans with access to world-class courts, coaching, and club facilities."
+          }
+        />
+        <meta
+          property="og:title"
+          content={seoTitle.data || "Membership | Manhattan Racquet Club"}
+        />
+        <meta
+          property="og:description"
+          content={
+            seoDesc.data ||
+            "Explore membership options at the Manhattan Racquet Club. Junior, Adult, and Family plans with access to world-class courts, coaching, and club facilities."
+          }
+        />
+      </Helmet>
       {/* ─── Hero Banner ───────────────────────────────────────── */}
       <section
         className="relative py-24 overflow-hidden"

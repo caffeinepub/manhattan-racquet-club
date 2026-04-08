@@ -7,14 +7,21 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { HelmetProvider } from "react-helmet-async";
 import PublicLayout from "./components/PublicLayout";
 import { useActor } from "./hooks/useActor";
 import { useAllContent, useInitDefaultContent } from "./hooks/useQueries";
 import AboutPage from "./pages/AboutPage";
 import AdminPage from "./pages/AdminPage";
+import BookingPage from "./pages/BookingPage";
 import ContactPage from "./pages/ContactPage";
+import GalleryPage from "./pages/GalleryPage";
 import LandingPage from "./pages/LandingPage";
+import MembershipEnquiryPage from "./pages/MembershipEnquiryPage";
 import MembershipPage from "./pages/MembershipPage";
+import NewsPage from "./pages/NewsPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import StatusPage from "./pages/StatusPage";
 
 // ─── Content Initializer ───────────────────────────────────────────────────
 function ContentInitializer() {
@@ -79,14 +86,56 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+const newsRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/news",
+  component: NewsPage,
+});
+
+const galleryRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/gallery",
+  component: GalleryPage,
+});
+
+const membershipEnquiryRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/membership/enquiry",
+  component: MembershipEnquiryPage,
+});
+
+const bookingRoute = createRoute({
+  getParentRoute: () => publicLayoutRoute,
+  path: "/booking",
+  component: BookingPage,
+});
+
+const statusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/status",
+  component: StatusPage,
+});
+
+const notFoundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/*",
+  component: NotFoundPage,
+});
+
 const routeTree = rootRoute.addChildren([
   publicLayoutRoute.addChildren([
     landingRoute,
     aboutRoute,
     membershipRoute,
+    membershipEnquiryRoute,
     contactRoute,
+    newsRoute,
+    galleryRoute,
+    bookingRoute,
   ]),
   adminRoute,
+  statusRoute,
+  notFoundRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -98,5 +147,9 @@ declare module "@tanstack/react-router" {
 }
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <HelmetProvider>
+      <RouterProvider router={router} />
+    </HelmetProvider>
+  );
 }

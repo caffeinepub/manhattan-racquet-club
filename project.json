@@ -1,0 +1,29 @@
+{
+  "overview": "Manhattan Racquet Club is a polished, minimal public-facing website for a fictional NYC tennis club. It features four public pages (Landing, About, Membership, Contact) plus a robust admin dashboard with CMS, image management, multi-level admin access, membership enquiries, court bookings, gallery, news, activity log, draft preview, and SEO management.",
+  "features": [
+    "Public pages: Landing, About, Membership, Contact, News, Gallery",
+    "Admin dashboard with CMS for all site content",
+    "Internet Identity authentication for admin access",
+    "Two-tier admin system: Superadmin and Admin roles",
+    "Image upload and management via blob storage",
+    "Membership enquiry form with admin inbox",
+    "Court booking request form with admin management",
+    "Photo gallery with admin upload and alt text",
+    "News/announcements page",
+    "Activity log for admin actions",
+    "Draft/preview workflow for content changes",
+    "SEO metadata management per page",
+    "Custom 404 page and health check status page",
+    "PWA manifest and branded favicon",
+    "Build safeguards preventing admin lockout and image upload regressions"
+  ],
+  "category": "business",
+  "tags": [
+    "tennis",
+    "sports-club",
+    "cms",
+    "admin-dashboard",
+    "nyc"
+  ],
+  "last_updated": "2026-04-08T11:31:46.008Z"
+}

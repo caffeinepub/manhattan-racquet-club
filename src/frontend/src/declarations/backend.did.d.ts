@@ -10,6 +10,14 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface ActivityLogEntry {
+  'id' : string,
+  'action' : string,
+  'adminName' : string,
+  'timestamp' : bigint,
+  'details' : string,
+  'principalText' : string,
+}
 export interface AdminEntry {
   'principal' : Principal,
   'isSuperAdmin' : boolean,
@@ -20,6 +28,34 @@ export interface Announcement {
   'body' : string,
   'published' : boolean,
   'createdAt' : bigint,
+}
+export interface Booking {
+  'id' : string,
+  'status' : string,
+  'date' : string,
+  'name' : string,
+  'createdAt' : bigint,
+  'email' : string,
+  'notes' : string,
+  'timeSlot' : string,
+  'courtType' : string,
+}
+export interface Enquiry {
+  'id' : string,
+  'status' : string,
+  'tierId' : string,
+  'name' : string,
+  'createdAt' : bigint,
+  'email' : string,
+  'message' : string,
+  'phone' : string,
+}
+export interface GalleryImage {
+  'id' : string,
+  'displayOrder' : bigint,
+  'createdAt' : bigint,
+  'storageKey' : string,
+  'altText' : string,
 }
 export interface MembershipTier {
   'id' : bigint,
@@ -70,6 +106,11 @@ export interface _SERVICE {
   >,
   '_immutableObjectStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addGalleryImage' : ActorMethod<
+    [string, string, bigint],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignCallerUserRoleWithSuperAdminCheck' : ActorMethod<
     [Principal, UserRole],
@@ -83,11 +124,20 @@ export interface _SERVICE {
   >,
   'createStaffMember' : ActorMethod<[string, string, string, bigint], bigint>,
   'deleteAnnouncement' : ActorMethod<[bigint], undefined>,
+  'deleteGalleryImage' : ActorMethod<
+    [string],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'deleteMembershipTier' : ActorMethod<[bigint], undefined>,
   'deleteStaffMember' : ActorMethod<[bigint], undefined>,
+  'getActivityLog' : ActorMethod<[bigint], Array<ActivityLogEntry>>,
   'getAllAdmins' : ActorMethod<[], Array<AdminEntry>>,
   'getAllAnnouncements' : ActorMethod<[], Array<Announcement>>,
+  'getAllBookings' : ActorMethod<[], Array<Booking>>,
   'getAllContent' : ActorMethod<[], Array<[string, string]>>,
+  'getAllEnquiries' : ActorMethod<[], Array<Enquiry>>,
+  'getAllGalleryImages' : ActorMethod<[], Array<GalleryImage>>,
   'getAllMembershipTiers' : ActorMethod<[], Array<MembershipTier>>,
   'getAllStaffMembers' : ActorMethod<[], Array<StaffMember>>,
   'getAnnouncement' : ActorMethod<[bigint], Announcement>,
@@ -102,11 +152,41 @@ export interface _SERVICE {
   'initDefaultContent' : ActorMethod<[], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerSuperAdmin' : ActorMethod<[], boolean>,
+  'reorderGalleryImages' : ActorMethod<
+    [Array<string>],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setAnnouncementPublished' : ActorMethod<[bigint, boolean], undefined>,
   'setContentByKey' : ActorMethod<[string, string], undefined>,
   'setSuperAdmin' : ActorMethod<[Principal, boolean], undefined>,
+  'submitBooking' : ActorMethod<
+    [string, string, string, string, string, string],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
+  'submitEnquiry' : ActorMethod<
+    [string, string, string, string, string],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'updateAnnouncement' : ActorMethod<[bigint, string, string], undefined>,
+  'updateBookingStatus' : ActorMethod<
+    [string, string],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
+  'updateEnquiryStatus' : ActorMethod<
+    [string, string],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
+  'updateGalleryImage' : ActorMethod<
+    [string, string, bigint],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'updateMembershipTier' : ActorMethod<
     [bigint, string, string, Array<string>, bigint],
     undefined

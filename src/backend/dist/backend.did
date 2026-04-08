@@ -34,6 +34,37 @@ type MembershipTier =
    name: text;
    price: text;
  };
+type GalleryImage = 
+ record {
+   altText: text;
+   createdAt: int;
+   displayOrder: nat;
+   id: text;
+   storageKey: text;
+ };
+type Enquiry = 
+ record {
+   createdAt: int;
+   email: text;
+   id: text;
+   message: text;
+   name: text;
+   phone: text;
+   status: text;
+   tierId: text;
+ };
+type Booking = 
+ record {
+   courtType: text;
+   createdAt: int;
+   date: text;
+   email: text;
+   id: text;
+   name: text;
+   notes: text;
+   status: text;
+   timeSlot: text;
+ };
 type Announcement = 
  record {
    body: text;
@@ -47,6 +78,15 @@ type AdminEntry =
    isSuperAdmin: bool;
    "principal": principal;
  };
+type ActivityLogEntry = 
+ record {
+   action: text;
+   adminName: text;
+   details: text;
+   id: text;
+   principalText: text;
+   timestamp: int;
+ };
 service : {
   _immutableObjectStorageBlobsAreLive: (hashes: vec blob) -> (vec bool) query;
   _immutableObjectStorageBlobsToDelete: () -> (vec blob) query;
@@ -58,6 +98,11 @@ service : {
    (_ImmutableObjectStorageRefillResult);
   _immutableObjectStorageUpdateGatewayPrincipals: () -> ();
   _initializeAccessControlWithSecret: (text) -> ();
+  addGalleryImage: (storageKey: text, altText: text, displayOrder: nat) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
   assignCallerUserRole: (user: principal, role: UserRole) -> ();
   assignCallerUserRoleWithSuperAdminCheck: (user: principal, role:
    UserRole) -> ();
@@ -68,14 +113,22 @@ service : {
   createStaffMember: (name: text, role: text, bio: text, displayOrder:
    nat) -> (nat);
   deleteAnnouncement: (id: nat) -> ();
+  deleteGalleryImage: (id: text) -> (variant {
+                                       err: text;
+                                       ok: text;
+                                     });
   deleteMembershipTier: (id: nat) -> ();
   deleteStaffMember: (id: nat) -> ();
+  getActivityLog: (limit: nat) -> (vec ActivityLogEntry) query;
   getAllAdmins: () -> (vec AdminEntry) query;
   getAllAnnouncements: () -> (vec Announcement) query;
+  getAllBookings: () -> (vec Booking) query;
   getAllContent: () -> (vec record {
                               text;
                               text;
                             }) query;
+  getAllEnquiries: () -> (vec Enquiry) query;
+  getAllGalleryImages: () -> (vec GalleryImage) query;
   getAllMembershipTiers: () -> (vec MembershipTier) query;
   getAllStaffMembers: () -> (vec StaffMember) query;
   getAnnouncement: (id: nat) -> (Announcement) query;
@@ -90,11 +143,40 @@ service : {
   initDefaultContent: () -> ();
   isCallerAdmin: () -> (bool) query;
   isCallerSuperAdmin: () -> (bool) query;
+  reorderGalleryImages: (ids: vec text) -> (variant {
+                                              err: text;
+                                              ok: text;
+                                            });
   saveCallerUserProfile: (profile: UserProfile) -> ();
   setAnnouncementPublished: (id: nat, published: bool) -> ();
   setContentByKey: (key: text, content: text) -> ();
   setSuperAdmin: (user: principal, promote: bool) -> ();
+  submitBooking: (name: text, email: text, date: text, timeSlot: text,
+   courtType: text, notes: text) -> (variant {
+                                       err: text;
+                                       ok: text;
+                                     });
+  submitEnquiry: (name: text, email: text, phone: text, tierId: text,
+   message: text) -> (variant {
+                        err: text;
+                        ok: text;
+                      });
   updateAnnouncement: (id: nat, title: text, body: text) -> ();
+  updateBookingStatus: (id: text, status: text) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
+  updateEnquiryStatus: (id: text, status: text) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
+  updateGalleryImage: (id: text, altText: text, displayOrder: nat) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
   updateMembershipTier: (id: nat, name: text, price: text, benefits:
    vec text, displayOrder: nat) -> ();
   updateStaffMember: (id: nat, name: text, role: text, bio: text,

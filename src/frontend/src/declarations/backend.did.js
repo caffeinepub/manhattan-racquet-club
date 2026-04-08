@@ -24,6 +24,14 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const ActivityLogEntry = IDL.Record({
+  'id' : IDL.Text,
+  'action' : IDL.Text,
+  'adminName' : IDL.Text,
+  'timestamp' : IDL.Int,
+  'details' : IDL.Text,
+  'principalText' : IDL.Text,
+});
 export const AdminEntry = IDL.Record({
   'principal' : IDL.Principal,
   'isSuperAdmin' : IDL.Bool,
@@ -34,6 +42,34 @@ export const Announcement = IDL.Record({
   'body' : IDL.Text,
   'published' : IDL.Bool,
   'createdAt' : IDL.Int,
+});
+export const Booking = IDL.Record({
+  'id' : IDL.Text,
+  'status' : IDL.Text,
+  'date' : IDL.Text,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'email' : IDL.Text,
+  'notes' : IDL.Text,
+  'timeSlot' : IDL.Text,
+  'courtType' : IDL.Text,
+});
+export const Enquiry = IDL.Record({
+  'id' : IDL.Text,
+  'status' : IDL.Text,
+  'tierId' : IDL.Text,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'email' : IDL.Text,
+  'message' : IDL.Text,
+  'phone' : IDL.Text,
+});
+export const GalleryImage = IDL.Record({
+  'id' : IDL.Text,
+  'displayOrder' : IDL.Nat,
+  'createdAt' : IDL.Int,
+  'storageKey' : IDL.Text,
+  'altText' : IDL.Text,
 });
 export const MembershipTier = IDL.Record({
   'id' : IDL.Nat,
@@ -79,6 +115,11 @@ export const idlService = IDL.Service({
     ),
   '_immutableObjectStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addGalleryImage' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'assignCallerUserRoleWithSuperAdminCheck' : IDL.Func(
       [IDL.Principal, UserRole],
@@ -98,15 +139,28 @@ export const idlService = IDL.Service({
       [],
     ),
   'deleteAnnouncement' : IDL.Func([IDL.Nat], [], []),
+  'deleteGalleryImage' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'deleteMembershipTier' : IDL.Func([IDL.Nat], [], []),
   'deleteStaffMember' : IDL.Func([IDL.Nat], [], []),
+  'getActivityLog' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(ActivityLogEntry)],
+      ['query'],
+    ),
   'getAllAdmins' : IDL.Func([], [IDL.Vec(AdminEntry)], ['query']),
   'getAllAnnouncements' : IDL.Func([], [IDL.Vec(Announcement)], ['query']),
+  'getAllBookings' : IDL.Func([], [IDL.Vec(Booking)], ['query']),
   'getAllContent' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
       ['query'],
     ),
+  'getAllEnquiries' : IDL.Func([], [IDL.Vec(Enquiry)], ['query']),
+  'getAllGalleryImages' : IDL.Func([], [IDL.Vec(GalleryImage)], ['query']),
   'getAllMembershipTiers' : IDL.Func([], [IDL.Vec(MembershipTier)], ['query']),
   'getAllStaffMembers' : IDL.Func([], [IDL.Vec(StaffMember)], ['query']),
   'getAnnouncement' : IDL.Func([IDL.Nat], [Announcement], ['query']),
@@ -129,11 +183,41 @@ export const idlService = IDL.Service({
   'initDefaultContent' : IDL.Func([], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerSuperAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'reorderGalleryImages' : IDL.Func(
+      [IDL.Vec(IDL.Text)],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setAnnouncementPublished' : IDL.Func([IDL.Nat, IDL.Bool], [], []),
   'setContentByKey' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'setSuperAdmin' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
+  'submitBooking' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
+  'submitEnquiry' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'updateAnnouncement' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
+  'updateBookingStatus' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
+  'updateEnquiryStatus' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
+  'updateGalleryImage' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'updateMembershipTier' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Nat],
       [],
@@ -165,6 +249,14 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const ActivityLogEntry = IDL.Record({
+    'id' : IDL.Text,
+    'action' : IDL.Text,
+    'adminName' : IDL.Text,
+    'timestamp' : IDL.Int,
+    'details' : IDL.Text,
+    'principalText' : IDL.Text,
+  });
   const AdminEntry = IDL.Record({
     'principal' : IDL.Principal,
     'isSuperAdmin' : IDL.Bool,
@@ -175,6 +267,34 @@ export const idlFactory = ({ IDL }) => {
     'body' : IDL.Text,
     'published' : IDL.Bool,
     'createdAt' : IDL.Int,
+  });
+  const Booking = IDL.Record({
+    'id' : IDL.Text,
+    'status' : IDL.Text,
+    'date' : IDL.Text,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'email' : IDL.Text,
+    'notes' : IDL.Text,
+    'timeSlot' : IDL.Text,
+    'courtType' : IDL.Text,
+  });
+  const Enquiry = IDL.Record({
+    'id' : IDL.Text,
+    'status' : IDL.Text,
+    'tierId' : IDL.Text,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'email' : IDL.Text,
+    'message' : IDL.Text,
+    'phone' : IDL.Text,
+  });
+  const GalleryImage = IDL.Record({
+    'id' : IDL.Text,
+    'displayOrder' : IDL.Nat,
+    'createdAt' : IDL.Int,
+    'storageKey' : IDL.Text,
+    'altText' : IDL.Text,
   });
   const MembershipTier = IDL.Record({
     'id' : IDL.Nat,
@@ -220,6 +340,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     '_immutableObjectStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addGalleryImage' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'assignCallerUserRoleWithSuperAdminCheck' : IDL.Func(
         [IDL.Principal, UserRole],
@@ -239,15 +364,28 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'deleteAnnouncement' : IDL.Func([IDL.Nat], [], []),
+    'deleteGalleryImage' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'deleteMembershipTier' : IDL.Func([IDL.Nat], [], []),
     'deleteStaffMember' : IDL.Func([IDL.Nat], [], []),
+    'getActivityLog' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(ActivityLogEntry)],
+        ['query'],
+      ),
     'getAllAdmins' : IDL.Func([], [IDL.Vec(AdminEntry)], ['query']),
     'getAllAnnouncements' : IDL.Func([], [IDL.Vec(Announcement)], ['query']),
+    'getAllBookings' : IDL.Func([], [IDL.Vec(Booking)], ['query']),
     'getAllContent' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))],
         ['query'],
       ),
+    'getAllEnquiries' : IDL.Func([], [IDL.Vec(Enquiry)], ['query']),
+    'getAllGalleryImages' : IDL.Func([], [IDL.Vec(GalleryImage)], ['query']),
     'getAllMembershipTiers' : IDL.Func(
         [],
         [IDL.Vec(MembershipTier)],
@@ -274,11 +412,41 @@ export const idlFactory = ({ IDL }) => {
     'initDefaultContent' : IDL.Func([], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerSuperAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'reorderGalleryImages' : IDL.Func(
+        [IDL.Vec(IDL.Text)],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setAnnouncementPublished' : IDL.Func([IDL.Nat, IDL.Bool], [], []),
     'setContentByKey' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'setSuperAdmin' : IDL.Func([IDL.Principal, IDL.Bool], [], []),
+    'submitBooking' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
+    'submitEnquiry' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'updateAnnouncement' : IDL.Func([IDL.Nat, IDL.Text, IDL.Text], [], []),
+    'updateBookingStatus' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
+    'updateEnquiryStatus' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
+    'updateGalleryImage' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'updateMembershipTier' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Vec(IDL.Text), IDL.Nat],
         [],

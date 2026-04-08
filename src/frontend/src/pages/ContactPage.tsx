@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { useImageUrl } from "../hooks/useImageUrl";
 import { useContentByKey } from "../hooks/useQueries";
@@ -30,6 +31,9 @@ export default function ContactPage() {
     "/assets/generated/hero-contact.dim_1400x600.jpg",
   );
 
+  const seoTitle = useContentByKey("page_seo_title_contact");
+  const seoDesc = useContentByKey("page_seo_desc_contact");
+
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,6 +50,27 @@ export default function ContactPage() {
 
   return (
     <div className="overflow-x-hidden">
+      <Helmet>
+        <title>{seoTitle.data || "Contact | Manhattan Racquet Club"}</title>
+        <meta
+          name="description"
+          content={
+            seoDesc.data ||
+            "Contact the Manhattan Racquet Club. Visit us at 247 Park Avenue South, New York, or reach out by phone and email. We'd love to hear from you."
+          }
+        />
+        <meta
+          property="og:title"
+          content={seoTitle.data || "Contact | Manhattan Racquet Club"}
+        />
+        <meta
+          property="og:description"
+          content={
+            seoDesc.data ||
+            "Contact the Manhattan Racquet Club. Visit us at 247 Park Avenue South, New York, or reach out by phone and email. We'd love to hear from you."
+          }
+        />
+      </Helmet>
       {/* ─── Hero Banner ───────────────────────────────────────── */}
       <section
         className="relative py-24 overflow-hidden"
